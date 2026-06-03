@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-multipart
+requests
+pydantic
+groq
+gTTS
+python-dotenv
+numpy
+motor
+pymongo
