@@ -1,17 +1,24 @@
 import uuid
 import json
-import base64
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from app.models.session import Session, UIConfig
+from app.models.session import Session
 from app.services.llm import chat_with_llm
 from app.services.stt import transcribe_audio
-from app.services.tts import get_audio_bytes
 from app.utils.parser import parse_llm_response
-from app.services.database import get_user_progress, can_start_interview, save_interview_session, update_progress
+from app.services.database import get_user_progress, can_start_interview, save_interview_session, update_progress, update_session, test_db_connection
 
-app = FastAPI()
+from app.routers import dropbox_auth, interviews, code_runner
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await test_db_connection()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -20,6 +27,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(dropbox_auth.router)
+app.include_router(interviews.router)
+app.include_router(code_runner.router)
 
 # In-memory session store
 sessions = {}
@@ -40,7 +51,7 @@ async def start_session(request: StartSessionRequest):
         }
     
     session_id = str(uuid.uuid4())
-    sessions[session_id] = Session(sessionId=session_id)
+    sessions[session_id] = Session(sessionId=session_id, created_at=datetime.now(timezone.utc))
     # Store JD in session context (temporarily using currentCodeWorkspace)
     sessions[session_id].currentCodeWorkspace = request.jd 
     
@@ -88,6 +99,12 @@ async def respond_audio(sessionId: str = Form(...), file: UploadFile = File(...)
         session.currentState = ui_config['currentState']
         if session.currentState == "STATE_3":
              await update_progress(sessionId, ui_config.get("detectedGaps", []), voice_script)
+    
+    # Persist history snapshot to DB so session survives restarts
+    await update_session(sessionId, {
+        "history": session.history,
+        "currentState": session.currentState,
+    })
     
     return {
         "uiConfig": ui_config,

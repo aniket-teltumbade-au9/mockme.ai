@@ -20,16 +20,28 @@ def parse_llm_response(response_text):
         # If no tag, assume everything might be JSON or split by some other logic
         ui_part = response_text
         
-    # 2. Extract JSON from the UI part
+    # 2. Extract JSON from the UI part — use a non-greedy brace-balanced search
+    # Find the first '{' and then walk forward to find its matching '}'
     ui_config = {}
-    json_match = re.search(r"(\{.*\})", ui_part, re.DOTALL)
-    if json_match:
-        try:
-            json_str = json_match.group(1).strip()
-            ui_config = json.loads(json_str)
-        except json.JSONDecodeError:
-            print(f"Failed to parse [UI_SYNC] JSON. Raw string: {json_match.group(1)}")
-            ui_config = {"error": "Invalid UI state from LLM"}
+    brace_start = ui_part.find('{')
+    if brace_start != -1:
+        depth = 0
+        brace_end = -1
+        for i, ch in enumerate(ui_part[brace_start:], start=brace_start):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    brace_end = i
+                    break
+        if brace_end != -1:
+            json_str = ui_part[brace_start:brace_end + 1].strip()
+            try:
+                ui_config = json.loads(json_str)
+            except json.JSONDecodeError:
+                print(f"Failed to parse [UI_SYNC] JSON. Raw string: {json_str}")
+                ui_config = {"error": "Invalid UI state from LLM"}
     
     # 3. Handle Voice part
     voice_script = voice_part.strip()
