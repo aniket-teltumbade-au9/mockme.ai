@@ -20,6 +20,7 @@ import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
 import { AnalysisDrawer } from "@/components/Dashboard/AnalysisDrawer";
 import { PreflightWizard } from "@/components/PreflightWizard";
 import { LiveTranscript, VoiceSelector, TTS_VOICES, TTSVoice } from "@/components/InterviewOverlays";
+import { API_BASE, DEFAULT_USER_ID } from "@/utils/apiConfig";
 
 interface EditorConfig {
   language: string;
@@ -52,8 +53,6 @@ interface DropboxStatus {
   connected: boolean;
   email?: string;
 }
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export default function InterviewPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -108,7 +107,7 @@ export default function InterviewPage() {
 
   const fetchProgress = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/user/progress`);
+      const res = await axios.get(`${API_BASE}/user/progress`, { params: { user_id: DEFAULT_USER_ID } });
       setUserProgress(res.data);
     } catch (err) {
       console.error("Failed to fetch progress", err);
@@ -117,7 +116,7 @@ export default function InterviewPage() {
 
   const fetchHistory = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/interviews/history`);
+      const res = await axios.get(`${API_BASE}/interviews/history`, { params: { user_id: DEFAULT_USER_ID } });
       setInterviewHistory(res.data);
     } catch (err) {
       console.error("Failed to fetch history", err);
@@ -126,7 +125,7 @@ export default function InterviewPage() {
 
   const fetchDropboxStatus = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/dropbox/status`);
+      const res = await axios.get(`${API_BASE}/dropbox/status`, { params: { user_id: DEFAULT_USER_ID } });
       setDropboxStatus(res.data);
     } catch (err) {
       console.error("Failed to fetch Dropbox status", err);
@@ -135,7 +134,7 @@ export default function InterviewPage() {
 
   const connectDropbox = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/dropbox/auth-url`);
+      const res = await axios.get(`${API_BASE}/dropbox/auth-url`, { params: { user_id: DEFAULT_USER_ID } });
       localStorage.setItem("dropbox_code_verifier", res.data.code_verifier);
       window.location.href = res.data.auth_url;
     } catch {

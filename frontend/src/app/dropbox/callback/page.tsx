@@ -3,7 +3,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { API_BASE } from "@/utils/apiConfig";
+import { API_BASE, DEFAULT_USER_ID } from "@/utils/apiConfig";
 
 function DropboxCallbackContent() {
   const router = useRouter();
@@ -25,7 +25,7 @@ function DropboxCallbackContent() {
     const completeAuth = async () => {
       try {
         await axios.get(`${API_BASE}/dropbox/callback`, {
-          params: { code, code_verifier: codeVerifier, state }
+          params: { code, code_verifier: codeVerifier, state, user_id: DEFAULT_USER_ID }
         });
         setStatus('success');
         localStorage.removeItem('dropbox_code_verifier');

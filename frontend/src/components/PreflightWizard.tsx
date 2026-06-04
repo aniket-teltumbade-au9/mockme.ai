@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
-import { API_BASE } from "@/utils/apiConfig";
+import { API_BASE, DEFAULT_USER_ID } from "@/utils/apiConfig";
 
 type StepStatus = "pending" | "loading" | "ok" | "warn" | "error";
 
@@ -186,7 +186,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         detail: "Provisioning session storage…",
       });
       try {
-        await axios.get(`${API_BASE}/user/progress`);
+        await axios.get(`${API_BASE}/user/progress`, { params: { user_id: DEFAULT_USER_ID } });
         patchStep("db", { status: "ok", detail: "Session storage ready." });
       } catch {
         patchStep("db", {
@@ -201,7 +201,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
       // --- Step 4: Dropbox (non-blocking) ---
       patchStep("dropbox", { status: "loading", detail: "Checking Dropbox…" });
       try {
-        const res = await axios.get(`${API_BASE}/dropbox/status`);
+        const res = await axios.get(`${API_BASE}/dropbox/status`, { params: { user_id: DEFAULT_USER_ID } });
         if (res.data.connected) {
           patchStep("dropbox", {
             status: "ok",
@@ -215,7 +215,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
             actionLabel: "Connect Dropbox",
             onAction: async () => {
               try {
-                const r = await axios.get(`${API_BASE}/dropbox/auth-url`);
+                const r = await axios.get(`${API_BASE}/dropbox/auth-url`, { params: { user_id: DEFAULT_USER_ID } });
                 localStorage.setItem(
                   "dropbox_code_verifier",
                   r.data.code_verifier,
