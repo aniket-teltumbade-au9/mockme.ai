@@ -48,10 +48,19 @@ async def health_check():
 async def user_progress():
     return await get_user_progress()
 
+import time
+# ...
 @app.get("/api/tts")
 async def text_to_speech(text: str, lang: str = "en"):
     """Return gTTS MP3 bytes for the given text and accent lang code."""
+    start_time = time.time()
+    print(f"DEBUG: TTS request started for text: '{text[:20]}...'")
+    
     audio_bytes = get_audio_bytes(text, lang)
+    
+    duration = time.time() - start_time
+    print(f"DEBUG: TTS request finished in {duration:.2f}s")
+    
     if not audio_bytes:
         return Response(status_code=204)
     return Response(content=audio_bytes, media_type="audio/mpeg")

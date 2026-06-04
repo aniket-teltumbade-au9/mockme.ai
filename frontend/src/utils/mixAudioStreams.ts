@@ -50,6 +50,8 @@ export async function createRecordingContext(): Promise<RecordingContext> {
   // routes them into the recording destination simultaneously.
   const playInterviewerAudio = (audioBytes: ArrayBuffer): Promise<void> => {
     return new Promise((resolve, reject) => {
+      console.log('DEBUG: Decoding interviewer audio...', audioBytes.byteLength, 'bytes');
+      
       // Copy the buffer — decodeAudioData detaches it on some browsers
       const bufferCopy = audioBytes.slice(0);
 
@@ -64,7 +66,11 @@ export async function createRecordingContext(): Promise<RecordingContext> {
           // Also route to speakers so the user hears Sarah
           source.connect(audioContext.destination);
 
-          source.onended = () => resolve();
+          source.onended = () => {
+            console.log('DEBUG: Audio playback ended.');
+            resolve();
+          };
+          console.log('DEBUG: Starting audio playback...');
           source.start(0);
         },
         (err) => {

@@ -100,13 +100,17 @@ export const useInterviewRecorder = (): UseInterviewRecorderReturn => {
    */
   const playInterviewerAudio = useCallback(
     async (audioBytes: ArrayBuffer): Promise<void> => {
+      console.log('DEBUG: Queuing interviewer audio...');
       // Chain playback to ensure serial execution
       audioPlaybackRef.current = audioPlaybackRef.current.then(async () => {
         // Wait until recording context is initialized
         while (!recCtxRef.current) {
+          console.log('DEBUG: Waiting for recording context...');
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
+        console.log('DEBUG: Invoking playInterviewerAudio...');
         await recCtxRef.current.playInterviewerAudio(audioBytes);
+        console.log('DEBUG: playInterviewerAudio finished.');
       });
       return audioPlaybackRef.current;
     },
