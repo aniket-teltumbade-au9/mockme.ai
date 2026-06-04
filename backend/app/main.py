@@ -3,11 +3,13 @@ import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.models.session import Session
 from app.services.llm import chat_with_llm
 from app.services.stt import transcribe_audio
+from app.services.tts import get_audio_bytes
 from app.utils.parser import parse_llm_response
 from app.services.database import get_user_progress, can_start_interview, save_interview_session, update_progress, update_session, test_db_connection
 
@@ -41,6 +43,14 @@ class StartSessionRequest(BaseModel):
 @app.get("/api/user/progress")
 async def user_progress():
     return await get_user_progress()
+
+@app.post("/api/tts")
+async def text_to_speech(text: str, lang: str = "en"):
+    """Return gTTS MP3 bytes for the given text and accent lang code."""
+    audio_bytes = get_audio_bytes(text, lang)
+    if not audio_bytes:
+        return Response(status_code=204)
+    return Response(content=audio_bytes, media_type="audio/mpeg")
 
 @app.post("/api/session/start")
 async def start_session(request: StartSessionRequest):
