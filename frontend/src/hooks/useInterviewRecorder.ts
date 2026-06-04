@@ -104,7 +104,14 @@ export const useInterviewRecorder = (): UseInterviewRecorderReturn => {
       // Chain playback to ensure serial execution
       audioPlaybackRef.current = audioPlaybackRef.current.then(async () => {
         // Wait until recording context is initialized
+        // This is only okay if startRecording HAS been called.
+        // If it hasn't, this loop will hang forever.
+        // We need a way to check if recording is actually intended.
         while (!recCtxRef.current) {
+          if (recordingStateRef.current === 'idle') {
+             console.log('DEBUG: Recording is idle, aborting wait.');
+             return;
+          }
           console.log('DEBUG: Waiting for recording context...');
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
