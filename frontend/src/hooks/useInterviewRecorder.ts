@@ -29,17 +29,21 @@ export const useInterviewRecorder = (): UseInterviewRecorderReturn => {
   };
 
   const startRecording = useCallback(async () => {
+    console.log("DEBUG: startRecording called. Current state:", recordingStateRef.current);
     audioChunksRef.current = [];
 
     // Tear down any previous context
     if (recCtxRef.current) {
+      console.log("DEBUG: Disposing previous recording context.");
       await recCtxRef.current.dispose();
       recCtxRef.current = null;
     }
 
     try {
+      console.log("DEBUG: Creating new recording context...");
       const recCtx = await createRecordingContext();
       recCtxRef.current = recCtx;
+      console.log("DEBUG: Recording context created.");
 
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
@@ -57,6 +61,7 @@ export const useInterviewRecorder = (): UseInterviewRecorderReturn => {
       recorder.start(1000);
       mediaRecorderRef.current = recorder;
       setRecState("recording");
+      console.log("DEBUG: Recorder started. State set to:", recordingStateRef.current);
     } catch (err) {
       console.error("Failed to start session recorder:", err);
       setRecState("idle");
