@@ -48,7 +48,7 @@ async def health_check():
 async def user_progress():
     return await get_user_progress()
 
-@app.post("/api/tts")
+@app.get("/api/tts")
 async def text_to_speech(text: str, lang: str = "en"):
     """Return gTTS MP3 bytes for the given text and accent lang code."""
     audio_bytes = get_audio_bytes(text, lang)
