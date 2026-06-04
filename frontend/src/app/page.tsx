@@ -235,28 +235,30 @@ export default function InterviewPage() {
   };
 
   const startRecording = async () => {
+    // We are already using useInterviewRecorder() which creates the mixedStream.
+    // However, the `startRecording` function in page.tsx currently bypasses it
+    // and calls `navigator.mediaDevices.getUserMedia` again.
+    //
+    // The intended flow is to use the recorder provided by `useInterviewRecorder`,
+    // but the `page.tsx` seems to have its own `startRecording` logic.
+    //
+    // Given the architecture, I should use the `startRecording` function from
+    // `useInterviewRecorder()` which handles the mixedStream.
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(mediaStream);
-      setMediaRecorder(recorder);
-      const chunks: Blob[] = [];
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: "audio/webm" });
-        sendAudioResponse(audioBlob);
-        mediaStream.getTracks().forEach((track) => track.stop());
-      };
-      recorder.start();
+      await startFullSessionRecording();
       setIsRecording(true);
     } catch (err) {
-      console.error("Error accessing microphone", err);
+      console.error("Error starting session recording", err);
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
+  const stopRecording = async () => {
+    try {
+      const blob = await stopFullSessionRecording();
       setIsRecording(false);
+      sendAudioResponse(blob);
+    } catch (err) {
+      console.error("Error stopping session recording", err);
     }
   };
 
