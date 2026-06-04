@@ -8,7 +8,7 @@ interface AudioVisualizerProps {
 
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ stream, isSpeaking }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current || !stream) return;
@@ -58,7 +58,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ stream, isSpea
     draw();
 
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (animationRef.current !== null) cancelAnimationFrame(animationRef.current);
       audioContext.close();
     };
   }, [stream, isSpeaking]);

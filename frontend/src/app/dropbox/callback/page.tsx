@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { API_BASE } from "@/utils/apiConfig";
 
-export default function DropboxCallback() {
+function DropboxCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -71,5 +71,13 @@ export default function DropboxCallback() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function DropboxCallback() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DropboxCallbackContent />
+    </Suspense>
   );
 }
