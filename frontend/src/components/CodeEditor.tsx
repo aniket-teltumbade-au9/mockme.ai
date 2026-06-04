@@ -4,7 +4,7 @@ import Editor from "@monaco-editor/react";
 import axios from "axios";
 import { Terminal, TerminalLine } from "./Terminal";
 
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "@/utils/apiConfig";
 
 interface CodeEditorProps {
   code: string;

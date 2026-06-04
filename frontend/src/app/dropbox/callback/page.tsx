@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { API_BASE } from "@/utils/apiConfig";
 
 export default function DropboxCallback() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function DropboxCallback() {
 
     const completeAuth = async () => {
       try {
-        await axios.get(`http://localhost:8000/api/dropbox/callback`, {
+        await axios.get(`${API_BASE}/dropbox/callback`, {
           params: { code, code_verifier: codeVerifier, state }
         });
         setStatus('success');
