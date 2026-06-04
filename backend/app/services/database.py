@@ -28,7 +28,7 @@ async def test_db_connection():
     except Exception as e:
         print(f"MongoDB connection failed: {e}")
 
-async def get_user(user_id: str = "default_user"):
+async def get_user(user_id: str):
     user = await db.users.find_one({"user_id": user_id})
     if not user:
         new_user: dict = {"user_id": user_id, "dropbox_refresh_token": None}

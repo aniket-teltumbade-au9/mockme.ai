@@ -12,7 +12,7 @@ REDIRECT_URI = os.getenv("DROPBOX_REDIRECT_URI", "http://localhost:3000/dropbox/
 CSRF_TOKEN_KEY = "dropbox-auth-csrf-token"
 
 @router.get("/auth-url")
-async def get_dropbox_auth_url(user_id: str = "default_user"):
+async def get_dropbox_auth_url(user_id: str):
     if not DROPBOX_APP_KEY or DROPBOX_APP_KEY == "your_app_key":
         raise HTTPException(status_code=500, detail="Dropbox App Key not configured")
 
@@ -39,7 +39,7 @@ async def get_dropbox_auth_url(user_id: str = "default_user"):
     }
 
 @router.get("/callback")
-async def dropbox_callback(code: str, code_verifier: str, state: str, user_id: str = "default_user"):
+async def dropbox_callback(code: str, code_verifier: str, state: str, user_id: str):
     try:
         # Reconstruct the session with the state we received back
         session = {CSRF_TOKEN_KEY: state}
@@ -73,14 +73,14 @@ async def dropbox_callback(code: str, code_verifier: str, state: str, user_id: s
         raise HTTPException(status_code=400, detail=f"OAuth Handshake Failure: {str(e)}")
 
 @router.get("/status")
-async def get_dropbox_status(user_id: str = "default_user"):
+async def get_dropbox_status(user_id: str):
     user = await get_user(user_id)
     if not user or not user.get("dropbox_refresh_token"):
         return {"connected": False}
     return {"connected": True, "email": user.get("dropbox_account_email")}
 
 @router.post("/disconnect")
-async def disconnect_dropbox(user_id: str = "default_user"):
+async def disconnect_dropbox(user_id: str):
     await update_user_dropbox(user_id, {
         "dropbox_access_token": None,
         "dropbox_refresh_token": None,

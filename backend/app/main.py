@@ -40,6 +40,10 @@ sessions = {}
 class StartSessionRequest(BaseModel):
     jd: str
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
 @app.get("/api/user/progress")
 async def user_progress():
     return await get_user_progress()
