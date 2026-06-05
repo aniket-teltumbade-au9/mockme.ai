@@ -156,11 +156,17 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
             }) => Promise<MediaStream>;
           }
         ).getDisplayMedia;
+        
+        console.log("DEBUG: getDisplayMedia exists:", !!gdm);
         if (!gdm) throw new Error("not supported");
+        
+        console.log("DEBUG: Calling getDisplayMedia...");
         const sysStream = await gdm.call(navigator.mediaDevices, {
           audio: true,
           video: false,
         });
+        console.log("DEBUG: getDisplayMedia call returned successfully.");
+        
         if (sysStream.getAudioTracks().length > 0) {
           sysStream.getTracks().forEach((t) => t.stop());
           patchStep("system_audio", {
@@ -172,7 +178,8 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
           sysStream.getTracks().forEach((t) => t.stop());
           throw new Error("no audio tracks");
         }
-      } catch {
+      } catch (err) {
+        console.error("DEBUG: System audio check failed:", err);
         patchStep("system_audio", {
           status: "warn",
           detail:
