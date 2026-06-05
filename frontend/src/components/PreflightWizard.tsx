@@ -161,29 +161,37 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         if (!gdm) throw new Error("not supported");
         
         console.log("DEBUG: Calling getDisplayMedia...");
+        // Some browsers require video: true to even trigger the prompt,
+        // even if we only need audio.
         const sysStream = await gdm.call(navigator.mediaDevices, {
           audio: true,
-          video: false,
+          video: true, 
         });
         console.log("DEBUG: getDisplayMedia call returned successfully.");
         
+        // Track tracks to stop
+        const tracks = sysStream.getTracks();
+        
         if (sysStream.getAudioTracks().length > 0) {
-          sysStream.getTracks().forEach((t) => t.stop());
+          tracks.forEach((t) => t.stop());
           patchStep("system_audio", {
             status: "ok",
             detail:
               "System audio capture available. Interviewer voice will be recorded.",
           });
         } else {
-          sysStream.getTracks().forEach((t) => t.stop());
+          tracks.forEach((t) => t.stop());
           throw new Error("no audio tracks");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("DEBUG: System audio check failed:", err);
+        const detail = err.name === 'NotSupportedError' 
+          ? "System audio capture is not supported by your browser or operating system."
+          : "System audio unavailable — the interviewer's voice won't be included in the recording.";
+        
         patchStep("system_audio", {
           status: "warn",
-          detail:
-            "System audio unavailable — the interviewer's voice won't be included in the recording. You can still proceed, but the recording will only capture your responses.",
+          detail: detail,
         });
       }
 
