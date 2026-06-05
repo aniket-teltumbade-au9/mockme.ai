@@ -3,9 +3,11 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { API_BASE, DEFAULT_USER_ID } from "@/utils/apiConfig";
+import { API_BASE } from "@/utils/apiConfig";
+import { useAuth } from "@/context/AuthContext";
 
 function DropboxCallbackContent() {
+  const { setUserId } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -24,9 +26,13 @@ function DropboxCallbackContent() {
 
     const completeAuth = async () => {
       try {
-        await axios.get(`${API_BASE}/dropbox/callback`, {
-          params: { code, code_verifier: codeVerifier, state, user_id: DEFAULT_USER_ID }
+        const res = await axios.get(`${API_BASE}/dropbox/callback`, {
+          params: { code, code_verifier: codeVerifier, state }
         });
+
+        // Use the user_id returned by the backend
+        setUserId(res.data.user_id);
+
         setStatus('success');
         localStorage.removeItem('dropbox_code_verifier');
         setTimeout(() => router.push('/'), 2000);
@@ -38,8 +44,8 @@ function DropboxCallbackContent() {
     };
 
     completeAuth();
-  }, [searchParams, router]);
-
+  }, [searchParams, router, setUserId]);
+// ...
   return (
     <div className="container layout-conversational">
       <div className="glass-panel text-center" style={{ maxWidth: '400px' }}>

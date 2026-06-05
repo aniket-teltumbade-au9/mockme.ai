@@ -72,6 +72,11 @@ async def finalize_interview_task(session_id: str, mic_audio_bytes: bytes):
     # Cleanup
     if os.path.exists(mic_path): os.remove(mic_path)
     if os.path.exists(mixed_path) and mixed_path != mic_path: os.remove(mixed_path)
+    
+    # Clean up tts_clips
+    for clip in session.get("tts_clips", []):
+        if os.path.exists(clip['path']):
+            os.remove(clip['path'])
 
 
 @router.get("/{session_id}/status")

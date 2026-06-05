@@ -40,14 +40,15 @@ sessions = {}
 
 class StartSessionRequest(BaseModel):
     jd: str
+    user_id: str
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
 
 @app.get("/api/user/progress")
-async def user_progress():
-    return await get_user_progress()
+async def user_progress(user_id: str):
+    return await get_user_progress(user_id)
 
 import time
 # ...
@@ -68,14 +69,14 @@ async def text_to_speech(text: str, lang: str = "en"):
 
 @app.post("/api/session/start")
 async def start_session(request: StartSessionRequest):
-    if not await can_start_interview():
+    if not await can_start_interview(request.user_id):
         return {
             "error": "Daily limit reached", 
             "message": "You have already completed your interview for today. Consistency is key, come back tomorrow!"
         }
     
     session_id = str(uuid.uuid4())
-    sessions[session_id] = Session(sessionId=session_id, created_at=datetime.now(timezone.utc))
+    sessions[session_id] = Session(sessionId=session_id, user_id=request.user_id, created_at=datetime.now(timezone.utc))
     # Store JD in session context (temporarily using currentCodeWorkspace)
     sessions[session_id].currentCodeWorkspace = request.jd 
     
@@ -90,7 +91,7 @@ async def start_session(request: StartSessionRequest):
     await save_interview_session({
         "sessionId": session_id,
         "jd": request.jd,
-        "user_id": "default_user",
+        "user_id": request.user_id,
         "status": "active"
     })
     
@@ -100,13 +101,16 @@ async def start_session(request: StartSessionRequest):
     }
 
 @app.post("/api/interview/respond-audio")
-async def respond_audio(sessionId: str = Form(...), file: UploadFile = File(...)):
+async def respond_audio(sessionId: str = Form(...), user_id: str = Form(...), file: UploadFile = File(...)):
     if sessionId not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
+        # Re-initialize session from DB if it exists for this user
+        session_data = await db.interviews.find_one({"sessionId": sessionId, "user_id": user_id})
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Session not found")
+        sessions[sessionId] = Session(**session_data)
+
     session = sessions[sessionId]
-    jd = session.currentCodeWorkspace
-    
+    # ... rest of the function remains the same ...
     audio_bytes = await file.read()
     print(f"DEBUG: Received audio, size: {len(audio_bytes)} bytes")
     # Reset file pointer just in case it wasn't at the start (though FastAPI usually handles this)
@@ -136,7 +140,7 @@ async def respond_audio(sessionId: str = Form(...), file: UploadFile = File(...)
     if 'currentState' in ui_config:
         session.currentState = ui_config['currentState']
         if session.currentState == "STATE_3":
-             await update_progress(sessionId, ui_config.get("detectedGaps", []), voice_script)
+             await update_progress(session.user_id, sessionId, ui_config.get("detectedGaps", []), voice_script)
     
     # Persist history snapshot and tts_clips to DB
     await update_session(sessionId, {
@@ -152,14 +156,18 @@ async def respond_audio(sessionId: str = Form(...), file: UploadFile = File(...)
     }
 
 @app.post("/api/interview/respond-code")
-async def respond_code(sessionId: str, code: str):
+async def respond_code(sessionId: str, user_id: str, code: str):
     if sessionId not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
+        # Re-initialize session from DB
+        session_data = await db.interviews.find_one({"sessionId": sessionId, "user_id": user_id})
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Session not found")
+        sessions[sessionId] = Session(**session_data)
+
     session = sessions[sessionId]
     jd = session.currentCodeWorkspace
-    
-    # Send code update to LLM
+
+    # ... rest of the function remains the same ...
     prompt = f"User updated code to:\n```{code}```"
     session.history.append({"role": "user", "content": prompt})
     response_text = chat_with_llm(session.history, jd_context=jd)

@@ -20,7 +20,9 @@ import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
 import { AnalysisDrawer } from "@/components/Dashboard/AnalysisDrawer";
 import { PreflightWizard } from "@/components/PreflightWizard";
 import { LiveTranscript, VoiceSelector, TTS_VOICES, TTSVoice } from "@/components/InterviewOverlays";
-import { API_BASE, DEFAULT_USER_ID } from "@/utils/apiConfig";
+import { API_BASE } from "@/utils/apiConfig";
+import { useAuth } from "@/context/AuthContext";
+import { LoginScreen } from "@/components/LoginScreen";
 
 interface EditorConfig {
   language: string;
@@ -55,6 +57,16 @@ interface DropboxStatus {
 }
 
 export default function InterviewPage() {
+  const { userId, isInitialized } = useAuth();
+  
+  if (!isInitialized) {
+    return <div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white'}}>Loading...</div>;
+  }
+  
+  if (!userId) {
+    return <LoginScreen />;
+  }
+
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [uiConfig, setUiConfig] = useState<UiConfig | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -106,7 +118,7 @@ export default function InterviewPage() {
 
   const fetchProgress = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/user/progress`, { params: { user_id: DEFAULT_USER_ID } });
+      const res = await axios.get(`${API_BASE}/user/progress`, { params: { user_id: userId } });
       setUserProgress(res.data);
     } catch (err) {
       console.error("Failed to fetch progress", err);
@@ -115,7 +127,7 @@ export default function InterviewPage() {
 
   const fetchHistory = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/interviews/history`, { params: { user_id: DEFAULT_USER_ID } });
+      const res = await axios.get(`${API_BASE}/interviews/history`, { params: { user_id: userId } });
       setInterviewHistory(res.data);
     } catch (err) {
       console.error("Failed to fetch history", err);
@@ -124,16 +136,22 @@ export default function InterviewPage() {
 
   const fetchDropboxStatus = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/dropbox/status`, { params: { user_id: DEFAULT_USER_ID } });
+      const res = await axios.get(`${API_BASE}/dropbox/status`, { params: { user_id: userId } });
       setDropboxStatus(res.data);
     } catch (err) {
       console.error("Failed to fetch Dropbox status", err);
     }
   }, []);
 
+  const handleDropboxAction = () => {
+    if (!dropboxStatus?.connected) {
+      connectDropbox();
+    }
+  };
+
   const connectDropbox = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/dropbox/auth-url`, { params: { user_id: DEFAULT_USER_ID } });
+      const res = await axios.get(`${API_BASE}/dropbox/auth-url`, { params: { user_id: userId } });
       localStorage.setItem("dropbox_code_verifier", res.data.code_verifier);
       window.location.href = res.data.auth_url;
     } catch {
@@ -158,7 +176,7 @@ export default function InterviewPage() {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const res = await axios.post(`${API_BASE}/session/start`, { jd: pendingJd });
+      const res = await axios.post(`${API_BASE}/session/start`, { jd: pendingJd, user_id: userId });
       if (res.data.error) {
         setErrorMsg(res.data.message);
         setIsLoading(false);
@@ -279,8 +297,10 @@ export default function InterviewPage() {
     const formData = new FormData();
     formData.append("sessionId", currentSessionId);
     formData.append("file", blob, "recording.webm");
+    formData.append("user_id", userId!);
     try {
       const res = await axios.post(`${API_BASE}/interview/respond-audio`, formData);
+      // ... rest of function
       setUiConfigSynced(res.data.uiConfig);
       playAudio(res.data.uiConfig?.voice_script || "I understand.");
 
@@ -310,7 +330,7 @@ export default function InterviewPage() {
     setCodeSyncState("syncing");
     try {
       await axios.post(`${API_BASE}/interview/respond-code`, null, {
-        params: { sessionId: sessionIdRef.current, code },
+        params: { sessionId: sessionIdRef.current, code, user_id: userId },
       });
       setCodeSyncState("synced");
     } catch (err) {
@@ -352,7 +372,7 @@ export default function InterviewPage() {
               </h1>
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button
-                  onClick={connectDropbox}
+                  onClick={handleDropboxAction}
                   className="secondary"
                   style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem" }}
                 >
