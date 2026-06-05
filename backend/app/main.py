@@ -1,5 +1,6 @@
 import uuid
 import json
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -107,7 +108,11 @@ async def respond_audio(sessionId: str = Form(...), file: UploadFile = File(...)
     jd = session.currentCodeWorkspace
     
     audio_bytes = await file.read()
+    print(f"DEBUG: Received audio, size: {len(audio_bytes)} bytes")
+    # Reset file pointer just in case it wasn't at the start (though FastAPI usually handles this)
+    await file.seek(0)
     user_text = transcribe_audio(audio_bytes)
+    print(f"DEBUG: Transcription result: '{user_text}'")
     
     if not user_text: user_text = "[Silence]"
         
@@ -118,14 +123,25 @@ async def respond_audio(sessionId: str = Form(...), file: UploadFile = File(...)
     ui_config, voice_script = parse_llm_response(response_text)
     ui_config["voice_script"] = voice_script
     
+    # Generate and save TTS audio clip
+    tts_audio = get_audio_bytes(voice_script, "en")
+    clip_path = f"tts_clips/{sessionId}_{len(session.tts_clips)}.mp3"
+    os.makedirs("tts_clips", exist_ok=True)
+    with open(clip_path, "wb") as f:
+        f.write(tts_audio)
+    
+    # Track clip metadata
+    session.tts_clips.append({"path": clip_path, "start_time": 0.0}) # TODO: Calculate actual start time
+    
     if 'currentState' in ui_config:
         session.currentState = ui_config['currentState']
         if session.currentState == "STATE_3":
              await update_progress(sessionId, ui_config.get("detectedGaps", []), voice_script)
     
-    # Persist history snapshot to DB so session survives restarts
+    # Persist history snapshot and tts_clips to DB
     await update_session(sessionId, {
-        "history": session.history,
+        "history": [h.dict() if hasattr(h, 'dict') else h for h in session.history],
+        "tts_clips": session.tts_clips,
         "currentState": session.currentState,
     })
     

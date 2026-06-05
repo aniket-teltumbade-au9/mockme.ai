@@ -20,6 +20,7 @@ class Session(BaseModel):
     user_id: str = "default_user"
     currentState: str = "STATE_0"
     history: List[dict] = []
+    tts_clips: List[Dict[str, Any]] = [] # Track clips: {'path': str, 'start_time': float}
     detectedGaps: List[str] = []
     currentCodeWorkspace: str = ""
     jd: Optional[str] = None

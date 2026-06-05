@@ -3,24 +3,33 @@ from datetime import datetime, timezone
 from app.services.database import get_session, get_user, update_session, db
 from app.services.dropbox_service import DropboxService
 from app.services.analysis_builder import build_groq_session_analysis
+from app.services.audio_mixer import mix_audio
+import os
 
 router = APIRouter(prefix="/api/interviews", tags=["interviews"])
 
-@router.get("/history")
-async def get_interview_history(user_id: str):
-    cursor = db.interviews.find({"user_id": user_id}).sort("created_at", -1)
-    interviews = await cursor.to_list(length=100)
-    for i in interviews:
-        i["_id"] = str(i["_id"])
-    return interviews
+# ... (rest of router functions)
 
-async def finalize_interview_task(session_id: str, audio_bytes: bytes):
+async def finalize_interview_task(session_id: str, mic_audio_bytes: bytes):
     session = await get_session(session_id)
     if not session:
         return
     user = await get_user(session.get("user_id"))
 
-    # 1. Build Analysis via Groq
+    # 1. Save mic recording temporarily
+    mic_path = f"tmp_{session_id}.webm"
+    mixed_path = f"mixed_{session_id}.mp3"
+    with open(mic_path, "wb") as f:
+        f.write(mic_audio_bytes)
+
+    # 2. Mix with TTS clips
+    try:
+        await mix_audio(mic_path, session.get("tts_clips", []), mixed_path)
+    except Exception as e:
+        print(f"Mixing Error: {e}")
+        mixed_path = mic_path # Fallback
+
+    # 3. Build Analysis via Groq
     try:
         analysis_payload = await build_groq_session_analysis(session)
     except Exception as e:
@@ -29,11 +38,13 @@ async def finalize_interview_task(session_id: str, audio_bytes: bytes):
         
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
-    # 2. Upload to Dropbox if connected
+    # 4. Upload to Dropbox if connected
     if user.get("dropbox_refresh_token"):
         try:
             service = DropboxService(user["dropbox_refresh_token"])
-            audio_url, json_url = service.upload_interview(session_id, date_str, audio_bytes, analysis_payload)
+            with open(mixed_path, "rb") as f:
+                mixed_bytes = f.read()
+            audio_url, json_url = service.upload_interview(session_id, date_str, mixed_bytes, analysis_payload)
             
             await update_session(session_id, {
                 "finalized": True,
@@ -57,6 +68,11 @@ async def finalize_interview_task(session_id: str, audio_bytes: bytes):
             "analysis": analysis_payload,
             "finalization_attempted_at": datetime.now(timezone.utc)
         })
+
+    # Cleanup
+    if os.path.exists(mic_path): os.remove(mic_path)
+    if os.path.exists(mixed_path) and mixed_path != mic_path: os.remove(mixed_path)
+
 
 @router.get("/{session_id}/status")
 async def get_interview_status(session_id: str):

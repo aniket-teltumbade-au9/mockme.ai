@@ -92,7 +92,6 @@ export default function InterviewPage() {
   const {
     startRecording: startFullSessionRecording,
     stopRecording: stopFullSessionRecording,
-    playInterviewerAudio,
   } = useInterviewRecorder();
 
   const [jd, setJd] = useState("");
@@ -192,26 +191,7 @@ export default function InterviewPage() {
     }
 
     setIsSpeaking(true);
-    try {
-      const res = await fetch(`${API_BASE}/tts?text=${encodeURIComponent(text)}&lang=${selectedVoice.lang}`);
-
-      if (res.status === 204 || !res.ok) {
-        // TTS failed or returned nothing — fall back to SpeechSynthesis so
-        // the interview is never silently broken
-        fallbackSpeechSynthesis(text);
-        return;
-      }
-
-      const arrayBuffer = await res.arrayBuffer();
-      await playInterviewerAudio(arrayBuffer);
-    } catch (err) {
-      console.error('TTS fetch failed, falling back to SpeechSynthesis:', err);
-      fallbackSpeechSynthesis(text);
-      return;
-    }
-
-    setIsSpeaking(false);
-    if (uiConfigRef.current?.currentState !== 'STATE_3') startRecording();
+    fallbackSpeechSynthesis(text);
   };
 
   /** Emergency fallback — audio won't be captured in the recording */

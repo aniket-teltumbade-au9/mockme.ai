@@ -66,12 +66,6 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
       status: "loading",
     },
     {
-      id: "system_audio",
-      label: "Interviewer Audio Capture",
-      detail: "Checking system audio…",
-      status: "pending",
-    },
-    {
       id: "db",
       label: "Session Storage",
       detail: "Provisioning your session record…",
@@ -84,8 +78,9 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
       status: "pending",
     },
   ]);
-  const [systemAudioWarningAcked, setSystemAudioWarningAcked] = useState(false);
   const [dropboxWarningAcked, setDropboxWarningAcked] = useState(false);
+
+  // ... (rest of the component logic, updated to remove system_audio reference)
 
   // Stable helper — writes into setSteps, no external deps needed
   const patchStep = (id: string, patch: Partial<Step>) =>
@@ -103,12 +98,6 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
           label: "Microphone Access",
           detail: "Checking mic permission…",
           status: "loading",
-        },
-        {
-          id: "system_audio",
-          label: "Interviewer Audio Capture",
-          detail: "Checking system audio…",
-          status: "pending",
         },
         {
           id: "db",
@@ -142,60 +131,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         return;
       }
 
-      // --- Step 2: System audio (non-blocking) ---
-      patchStep("system_audio", {
-        status: "loading",
-        detail: "Requesting screen/system audio capture…",
-      });
-      try {
-        const gdm = (
-          navigator.mediaDevices as unknown as {
-            getDisplayMedia?: (c: {
-              audio: boolean;
-              video: boolean;
-            }) => Promise<MediaStream>;
-          }
-        ).getDisplayMedia;
-        
-        console.log("DEBUG: getDisplayMedia exists:", !!gdm);
-        if (!gdm) throw new Error("not supported");
-        
-        console.log("DEBUG: Calling getDisplayMedia...");
-        // Some browsers require video: true to even trigger the prompt,
-        // even if we only need audio.
-        const sysStream = await gdm.call(navigator.mediaDevices, {
-          audio: true,
-          video: true, 
-        });
-        console.log("DEBUG: getDisplayMedia call returned successfully.");
-        
-        // Track tracks to stop
-        const tracks = sysStream.getTracks();
-        
-        if (sysStream.getAudioTracks().length > 0) {
-          tracks.forEach((t) => t.stop());
-          patchStep("system_audio", {
-            status: "ok",
-            detail:
-              "System audio capture available. Interviewer voice will be recorded.",
-          });
-        } else {
-          tracks.forEach((t) => t.stop());
-          throw new Error("no audio tracks");
-        }
-      } catch (err: any) {
-        console.error("DEBUG: System audio check failed:", err);
-        const detail = err.name === 'NotSupportedError' 
-          ? "System audio capture is not supported by your browser or operating system."
-          : "System audio unavailable — the interviewer's voice won't be included in the recording.";
-        
-        patchStep("system_audio", {
-          status: "warn",
-          detail: detail,
-        });
-      }
-
-      // --- Step 3: DB (blocking) ---
+      // --- Step 2: DB (blocking) ---
       patchStep("db", {
         status: "loading",
         detail: "Provisioning session storage…",
@@ -263,11 +199,9 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
     if (!allDone) return false;
     if (byId.mic?.status === "error" || byId.db?.status === "error")
       return false;
-    if (byId.system_audio?.status === "warn" && !systemAudioWarningAcked)
-      return false;
     if (byId.dropbox?.status === "warn" && !dropboxWarningAcked) return false;
     return true;
-  }, [steps, systemAudioWarningAcked, dropboxWarningAcked]);
+  }, [steps, dropboxWarningAcked]);
 
   const allDone = steps.every(
     (s) => s.status !== "loading" && s.status !== "pending",
@@ -368,36 +302,6 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
                 )}
               </div>
 
-              {step.id === "system_audio" &&
-                step.status === "warn" &&
-                !systemAudioWarningAcked && (
-                  <div
-                    style={{
-                      marginTop: "0.75rem",
-                      paddingTop: "0.75rem",
-                      borderTop: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        fontSize: "0.8rem",
-                        cursor: "pointer",
-                        color: "#94a3b8",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        onChange={(e) =>
-                          setSystemAudioWarningAcked(e.target.checked)
-                        }
-                      />
-                      I understand the recording will only capture my voice
-                    </label>
-                  </div>
-                )}
               {step.id === "dropbox" &&
                 step.status === "warn" &&
                 !dropboxWarningAcked && (

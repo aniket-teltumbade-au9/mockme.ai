@@ -12,3 +12,4 @@ pymongo
 certifi
 dnspython
 dropbox
+ffmpeg-python
