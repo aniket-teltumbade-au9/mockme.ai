@@ -45,9 +45,14 @@ export const useInterviewRecorder = (): UseInterviewRecorderReturn => {
       recCtxRef.current = recCtx;
       console.log("DEBUG: Recording context created.");
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : "";
+      // Robust codec negotiation
+      const mimeTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+      ];
+      const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || "";
+      console.log("DEBUG: Selected MIME type:", mimeType);
 
       const recorder = new MediaRecorder(
         recCtx.mixedStream,
@@ -58,7 +63,8 @@ export const useInterviewRecorder = (): UseInterviewRecorderReturn => {
         if (e.data?.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      recorder.start(1000);
+      // Flush chunks every 5 seconds to reduce data loss risk on crash
+      recorder.start(5000); 
       mediaRecorderRef.current = recorder;
       setRecState("recording");
       console.log("DEBUG: Recorder started. State set to:", recordingStateRef.current);

@@ -13,16 +13,8 @@
  */
 
 export interface RecordingContext {
-  /** Feed this stream directly into MediaRecorder — contains mixed mic + interviewer audio */
   mixedStream: MediaStream;
-  /**
-   * Decode and play interviewer TTS audio bytes (MP3/WebM from the backend).
-   * The audio is simultaneously routed into the recording and played through
-   * the speaker so the user can hear it.
-   * Returns a Promise that resolves when playback finishes.
-   */
   playInterviewerAudio: (audioBytes: ArrayBuffer) => Promise<void>;
-  /** Tear down the Web Audio graph and stop all owned tracks */
   dispose: () => Promise<void>;
 }
 
@@ -33,59 +25,60 @@ export async function createRecordingContext(): Promise<RecordingContext> {
 
   const audioContext = new AudioContextClass();
 
-  if (audioContext.state === 'suspended') {
-    await audioContext.resume();
-  }
-
-  // Single destination — MediaRecorder reads from this
+  // Create destination for recording
   const destination = audioContext.createMediaStreamDestination();
+  
+  // Gain nodes for volume balancing
+  const micGain = audioContext.createGain();
+  micGain.gain.value = 1.0;
+  const ttsGain = audioContext.createGain();
+  ttsGain.gain.value = 1.2; // Slightly boost TTS
+
+  // Connect Gains
+  micGain.connect(destination);
+  ttsGain.connect(destination);
+  ttsGain.connect(audioContext.destination); // Play TTS to speakers
+
+  // Track active TTS sources for proper cleanup
+  const activeSources = new Set<AudioBufferSourceNode>();
 
   // ── Mic ──────────────────────────────────────────────────────────────────
   const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const micSource = audioContext.createMediaStreamSource(micStream);
-  micSource.connect(destination);
+  micSource.connect(micGain);
 
   // ── Interviewer TTS player ───────────────────────────────────────────────
-  // Each call decodes the MP3 bytes, plays them through the speaker AND
-  // routes them into the recording destination simultaneously.
-  const playInterviewerAudio = (audioBytes: ArrayBuffer): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      console.log('DEBUG: Decoding interviewer audio...', audioBytes.byteLength, 'bytes');
-      
-      // Copy the buffer — decodeAudioData detaches it on some browsers
-      const bufferCopy = audioBytes.slice(0);
+  const playInterviewerAudio = async (audioBytes: ArrayBuffer): Promise<void> => {
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
 
-      audioContext.decodeAudioData(
-        bufferCopy,
-        (decoded) => {
-          const source = audioContext.createBufferSource();
-          source.buffer = decoded;
+    const decoded = await audioContext.decodeAudioData(audioBytes.slice(0));
+    const source = audioContext.createBufferSource();
+    source.buffer = decoded;
+    source.connect(ttsGain);
 
-          // Route to recording destination
-          source.connect(destination);
-          // Also route to speakers so the user hears Sarah
-          source.connect(audioContext.destination);
-
-          source.onended = () => {
-            console.log('DEBUG: Audio playback ended.');
-            resolve();
-          };
-          console.log('DEBUG: Starting audio playback...');
-          source.start(0);
-        },
-        (err) => {
-          console.error('Failed to decode interviewer audio:', err);
-          reject(err);
-        },
-      );
+    activeSources.add(source);
+    
+    return new Promise((resolve) => {
+      source.onended = () => {
+        activeSources.delete(source);
+        resolve();
+      };
+      source.start(0);
     });
   };
 
-  // ── Mixed stream (mic + interviewer) → MediaRecorder ────────────────────
   const mixedStream = destination.stream;
 
-  // ── Cleanup ──────────────────────────────────────────────────────────────
   const dispose = async (): Promise<void> => {
+    // Stop all active sources
+    activeSources.forEach(s => {
+        try { s.stop(); } catch {}
+        s.disconnect();
+    });
+    activeSources.clear();
+
     micSource.disconnect();
     micStream.getTracks().forEach(t => t.stop());
     if (audioContext.state !== 'closed') {
