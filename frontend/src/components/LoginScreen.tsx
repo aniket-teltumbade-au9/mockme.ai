@@ -3,6 +3,7 @@ import { useState } from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE } from "@/utils/apiConfig";
+import { LogIn, Loader2, Sparkles, ShieldCheck } from "lucide-react";
 
 export const LoginScreen = () => {
   const { setUserId } = useAuth();
@@ -11,25 +12,88 @@ export const LoginScreen = () => {
   const loginWithDropbox = async () => {
     setIsLoading(true);
     try {
-      // Get auth URL without passing hardcoded user_id
       const res = await axios.get(`${API_BASE}/dropbox/auth-url`);
       localStorage.setItem("dropbox_code_verifier", res.data.code_verifier);
       window.location.href = res.data.auth_url;
     } catch (err) {
       console.error("Login failed", err);
       setIsLoading(false);
-      alert("Failed to initiate login.");
+      alert("Failed to initiate login. Please check your connection.");
     }
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#0f172a', color: 'white' }}>
-      <div style={{ textAlign: 'center', padding: '2rem', background: '#1e293b', borderRadius: '16px' }}>
-        <h1>MockMe.AI</h1>
-        <p>Please log in to continue.</p>
-        <button onClick={loginWithDropbox} disabled={isLoading} style={{ padding: '1rem 2rem', fontSize: '1rem' }}>
-          {isLoading ? "Redirecting..." : "Login with Dropbox"}
+    <div className="container layout-conversational" style={{ background: 'var(--background)', minHeight: '100vh' }}>
+      <div 
+        className="glass-panel text-center" 
+        style={{ 
+          maxWidth: '480px', 
+          width: '90%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1.5rem',
+          padding: '3.5rem 2.5rem',
+          boxShadow: '0 40px 100px -20px rgba(0,0,0,0.8), 0 0 80px -10px var(--primary-glow)'
+        }}
+      >
+        <div style={{ 
+          width: '72px', 
+          height: '72px', 
+          background: 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)',
+          borderRadius: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '0.5rem',
+          boxShadow: '0 10px 20px -5px var(--primary-glow)'
+        }}>
+          <Sparkles size={36} color="white" />
+        </div>
+
+        <div>
+            <h1 style={{ 
+              fontSize: '2.25rem', 
+              marginBottom: '0.75rem',
+              background: 'linear-gradient(to right, #fff, #94a3b8)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 900
+            }}>
+                MockMe.AI
+            </h1>
+            <p style={{ color: 'var(--foreground-muted)', fontSize: '1rem', maxWidth: '300px', margin: '0 auto' }}>
+                Master your next technical interview with AI-powered simulations.
+            </p>
+        </div>
+
+        <div style={{ width: '100%', height: '1px', background: 'var(--border)', margin: '0.5rem 0' }} />
+
+        <button 
+          onClick={loginWithDropbox} 
+          disabled={isLoading} 
+          style={{ 
+            width: '100%',
+            height: '56px',
+            fontSize: '1.05rem',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: '0 10px 20px -5px var(--primary-glow)'
+          }}
+        >
+          {isLoading ? (
+            <Loader2 className="animate-spin" size={20} />
+          ) : (
+            <>
+              <LogIn size={20} />
+              Continue with Dropbox
+            </>
+          )}
         </button>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--foreground-muted)', fontSize: '0.8rem' }}>
+            <ShieldCheck size={14} color="var(--accent)" />
+            Secure authentication via Dropbox OAuth
+        </div>
       </div>
     </div>
   );

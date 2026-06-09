@@ -6,10 +6,14 @@ import {
   Loader2,
   AlertTriangle,
   ChevronRight,
+  Mic,
+  Database,
+  Cloud,
+  Settings2
 } from "lucide-react";
 import axios from "axios";
 
-import { API_BASE, DEFAULT_USER_ID } from "@/utils/apiConfig";
+import { API_BASE, authHeaders } from "@/utils/apiConfig";
 
 type StepStatus = "pending" | "loading" | "ok" | "warn" | "error";
 
@@ -23,38 +27,13 @@ interface Step {
 }
 
 interface PreflightWizardProps {
+  userId: string;
   onComplete: () => void;
   onCancel: () => void;
 }
 
-function StatusIcon({ status }: { status: StepStatus }) {
-  if (status === "loading")
-    return (
-      <Loader2
-        size={20}
-        className="animate-spin"
-        style={{ color: "#818cf8" }}
-      />
-    );
-  if (status === "ok")
-    return <CheckCircle2 size={20} style={{ color: "#10b981" }} />;
-  if (status === "warn")
-    return <AlertTriangle size={20} style={{ color: "#f59e0b" }} />;
-  if (status === "error")
-    return <XCircle size={20} style={{ color: "#ef4444" }} />;
-  return (
-    <div
-      style={{
-        width: 20,
-        height: 20,
-        borderRadius: "50%",
-        border: "2px solid #334155",
-      }}
-    />
-  );
-}
-
 export const PreflightWizard: React.FC<PreflightWizardProps> = ({
+  userId,
   onComplete,
   onCancel,
 }) => {
@@ -80,9 +59,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
   ]);
   const [dropboxWarningAcked, setDropboxWarningAcked] = useState(false);
 
-  // ... (rest of the component logic, updated to remove system_audio reference)
-
-  // Stable helper — writes into setSteps, no external deps needed
+  // Helper to update state — wrap in ref to avoid effect deps needed
   const patchStep = (id: string, patch: Partial<Step>) =>
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
 
@@ -137,7 +114,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         detail: "Provisioning session storage…",
       });
       try {
-        await axios.get(`${API_BASE}/user/progress`, { params: { user_id: DEFAULT_USER_ID } });
+        await axios.get(`${API_BASE}/user/progress`, { headers: authHeaders() });
         patchStep("db", { status: "ok", detail: "Session storage ready." });
       } catch {
         patchStep("db", {
@@ -152,7 +129,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
       // --- Step 4: Dropbox (non-blocking) ---
       patchStep("dropbox", { status: "loading", detail: "Checking Dropbox…" });
       try {
-        const res = await axios.get(`${API_BASE}/dropbox/status`, { params: { user_id: DEFAULT_USER_ID } });
+        const res = await axios.get(`${API_BASE}/dropbox/status`, { headers: authHeaders() });
         if (res.data.connected) {
           patchStep("dropbox", {
             status: "ok",
@@ -166,7 +143,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
             actionLabel: "Connect Dropbox",
             onAction: async () => {
               try {
-                const r = await axios.get(`${API_BASE}/dropbox/auth-url`, { params: { user_id: DEFAULT_USER_ID } });
+                const r = await axios.get(`${API_BASE}/dropbox/auth-url`);
                 localStorage.setItem(
                   "dropbox_code_verifier",
                   r.data.code_verifier,
@@ -181,15 +158,14 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
       } catch {
         patchStep("dropbox", {
           status: "warn",
-          detail:
-            "Could not check Dropbox status. Recordings may not be saved to cloud.",
+          detail: "Could not verify Dropbox status.",
         });
       }
     };
 
     doChecksRef.current = doChecks;
     doChecks();
-  }, []); // intentionally runs once on mount
+  }, [userId]);
 
   const canProceed = useMemo(() => {
     const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
@@ -211,91 +187,115 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
     <div
       style={{
         position: "fixed",
-        inset: 0,
-        background: "rgba(2,6,23,0.85)",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(2, 6, 23, 0.85)",
+        backdropFilter: "blur(12px)",
+        zIndex: 1000,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 100,
       }}
     >
       <div
         className="glass-panel"
-        style={{ width: "100%", maxWidth: "520px", padding: "2rem" }}
+        style={{
+          width: "95%",
+          maxWidth: "540px",
+          padding: "3rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "2.5rem",
+          boxShadow: '0 50px 100px -20px rgba(0,0,0,0.5)'
+        }}
       >
-        <h2
-          style={{
-            fontSize: "1.2rem",
-            fontWeight: 700,
-            marginBottom: "0.25rem",
-          }}
-        >
-          Pre-Interview Checklist
-        </h2>
-        <p
-          style={{
-            color: "#64748b",
-            fontSize: "0.85rem",
-            marginBottom: "1.75rem",
-          }}
-        >
-          Verifying everything is ready before your session starts.
-        </p>
+        <div style={{ textAlign: "center" }}>
+            <div style={{ 
+                width: '56px', 
+                height: '56px', 
+                background: 'var(--secondary)', 
+                borderRadius: '16px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                margin: '0 auto 1.5rem',
+                border: '1px solid var(--border)'
+            }}>
+                <Settings2 size={28} color="var(--primary)" />
+            </div>
+          <h2 style={{ fontSize: "1.75rem", marginBottom: "0.5rem" }}>System Check</h2>
+          <p style={{ color: "var(--foreground-muted)", fontSize: "0.95rem" }}>
+            Ensuring everything is ready for your session.
+          </p>
+        </div>
 
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "1rem",
-            marginBottom: "1.5rem",
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {steps.map((step) => (
             <div
               key={step.id}
               style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+                padding: "1.25rem",
                 background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: "12px",
-                padding: "1rem",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--border)",
               }}
             >
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.75rem",
+                  justifyContent: "space-between",
                 }}
               >
-                <StatusIcon status={step.status} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.9rem", fontWeight: 600 }}>
-                    {step.label}
+                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <div style={{ color: step.status === 'ok' ? 'var(--accent)' : step.status === 'error' ? 'var(--danger)' : step.status === 'warn' ? 'var(--warning)' : 'var(--foreground-muted)' }}>
+                    {step.id === 'mic' && <Mic size={20} />}
+                    {step.id === 'db' && <Database size={20} />}
+                    {step.id === 'dropbox' && <Cloud size={20} />}
                   </div>
-                  <div
-                    style={{
-                      fontSize: "0.78rem",
-                      marginTop: "2px",
-                      color:
-                        step.status === "error"
-                          ? "#f87171"
-                          : step.status === "warn"
-                            ? "#fbbf24"
-                            : "#64748b",
-                    }}
-                  >
-                    {step.detail}
-                  </div>
+                  <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>{step.label}</span>
                 </div>
-                {step.actionLabel && step.onAction && (
+                <div>
+                  {step.status === "loading" && (
+                    <Loader2 size={20} className="animate-spin" color="var(--primary)" />
+                  )}
+                  {step.status === "ok" && (
+                    <CheckCircle2 size={20} color="var(--accent)" />
+                  )}
+                  {step.status === "error" && (
+                    <XCircle size={20} color="var(--danger)" />
+                  )}
+                  {step.status === "warn" && (
+                    <AlertTriangle size={20} color="var(--warning)" />
+                  )}
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: "1rem",
+                }}
+              >
+                <p style={{ fontSize: "0.85rem", color: "var(--foreground-muted)", flex: 1 }}>
+                  {step.detail}
+                </p>
+                {step.onAction && (
                   <button
-                    onClick={step.onAction}
                     className="secondary"
                     style={{
                       fontSize: "0.75rem",
-                      padding: "4px 10px",
+                      padding: "6px 12px",
+                      borderRadius: "8px",
                       flexShrink: 0,
                     }}
+                    onClick={step.onAction}
                   >
                     {step.actionLabel}
                   </button>
@@ -307,19 +307,19 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
                 !dropboxWarningAcked && (
                   <div
                     style={{
-                      marginTop: "0.75rem",
+                      marginTop: "0.5rem",
                       paddingTop: "0.75rem",
-                      borderTop: "1px solid rgba(255,255,255,0.06)",
+                      borderTop: "1px solid var(--border)",
                     }}
                   >
                     <label
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "0.5rem",
+                        gap: "0.6rem",
                         fontSize: "0.8rem",
                         cursor: "pointer",
-                        color: "#94a3b8",
+                        color: "var(--warning)",
                       }}
                     >
                       <input
@@ -327,6 +327,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
                         onChange={(e) =>
                           setDropboxWarningAcked(e.target.checked)
                         }
+                        style={{ accentColor: 'var(--warning)' }}
                       />
                       I understand recordings won&apos;t be saved to cloud
                       storage
@@ -338,27 +339,25 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         </div>
 
         <div style={{ display: "flex", gap: "1rem" }}>
-          <button className="secondary" onClick={onCancel} style={{ flex: 1 }}>
+          <button
+            className="secondary"
+            style={{ flex: 1, height: "52px" }}
+            onClick={onCancel}
+          >
             Cancel
           </button>
           <button
-            onClick={onComplete}
             disabled={!canProceed}
-            style={{
-              flex: 2,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
-            }}
+            style={{ flex: 2, height: "52px" }}
+            onClick={onComplete}
           >
             {!allDone ? (
               <>
-                <Loader2 size={16} className="animate-spin" /> Checking…
+                <Loader2 size={18} className="animate-spin" /> Checking…
               </>
             ) : (
               <>
-                <ChevronRight size={16} /> Begin Interview
+                Begin Interview <ChevronRight size={18} />
               </>
             )}
           </button>

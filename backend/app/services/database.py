@@ -41,7 +41,8 @@ async def get_user(user_id: str):
 async def update_user_dropbox(user_id: str, dropbox_data: dict):
     await db.users.update_one(
         {"user_id": user_id},
-        {"$set": dropbox_data}
+        {"$set": dropbox_data, "$setOnInsert": {"user_id": user_id}},
+        upsert=True,
     )
 
 async def get_session(session_id: str):
@@ -52,6 +53,14 @@ async def update_session(session_id: str, update_data: dict):
         {"sessionId": session_id},
         {"$set": update_data}
     )
+
+async def get_user_interviews(user_id: str):
+    cursor = db.interviews.find({"user_id": user_id}).sort("created_at", -1).limit(20)
+    interviews = []
+    async for interview in cursor:
+        interview["_id"] = str(interview["_id"])
+        interviews.append(interview)
+    return interviews
 
 async def get_user_progress(user_id: str):
     progress = await db.progress.find_one({"user_id": user_id})

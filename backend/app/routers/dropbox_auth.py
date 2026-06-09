@@ -1,8 +1,11 @@
 import os
-from fastapi import APIRouter, HTTPException
+import base64
+import json
+from fastapi import APIRouter, Depends, HTTPException
 import dropbox
 from datetime import datetime, timedelta, timezone
 from app.services.database import get_user, update_user_dropbox
+from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/dropbox", tags=["dropbox_auth"])
 
@@ -10,6 +13,15 @@ DROPBOX_APP_KEY = os.getenv("DROPBOX_APP_KEY", "")
 DROPBOX_APP_SECRET = os.getenv("DROPBOX_APP_SECRET", "")
 REDIRECT_URI = os.getenv("DROPBOX_REDIRECT_URI", "http://localhost:3000/dropbox/callback")
 CSRF_TOKEN_KEY = "dropbox-auth-csrf-token"
+DROPBOX_SCOPES = [
+    "openid",
+    "profile",
+    "email",
+    "account_info.read",
+    "files.content.write",
+    "sharing.read",
+    "sharing.write",
+]
 
 @router.get("/auth-url")
 async def get_dropbox_auth_url(user_id: str | None = None):
@@ -25,6 +37,7 @@ async def get_dropbox_auth_url(user_id: str | None = None):
         CSRF_TOKEN_KEY,
         use_pkce=True,
         token_access_type='offline',
+        scope=DROPBOX_SCOPES,
     )
     auth_url = flow.start()
 
@@ -50,17 +63,17 @@ async def dropbox_callback(code: str, code_verifier: str, state: str):
             session,
             CSRF_TOKEN_KEY,
             use_pkce=True, 
-            token_access_type='offline'
+            token_access_type='offline',
+            scope=DROPBOX_SCOPES,
         )
         flow.code_verifier = code_verifier
         
         # Finish expects a dict-like object for the query params
         res = flow.finish({"code": code, "state": state})
         
-        # Get account info to use email as user_id
-        dbx = dropbox.Dropbox(res.access_token)
-        account = dbx.users_get_current_account()
-        user_email = account.email
+        identity_claims = _decode_id_token(getattr(res, "id_token", None))
+        account = dropbox.Dropbox(res.access_token).users_get_current_account()
+        user_email = identity_claims.get("email") or account.email
         
         # Safely get expiry if it exists
         expires_in = getattr(res, 'expires_in', None)
@@ -70,27 +83,62 @@ async def dropbox_callback(code: str, code_verifier: str, state: str):
             "dropbox_access_token": res.access_token,
             "dropbox_refresh_token": getattr(res, 'refresh_token', None),
             "dropbox_token_expiry": expiry_delta,
-            "dropbox_account_email": user_email 
+            "dropbox_account_email": user_email,
+            "dropbox_subject": identity_claims.get("sub"),
+            "dropbox_display_name": identity_claims.get("name") or account.name.display_name,
+            "dropbox_email_verified": identity_claims.get("email_verified"),
+            "dropbox_scope": getattr(res, 'scope', None),
         })
         
-        return {"success": True, "user_id": user_email}
+        return {
+            "success": True,
+            "user_id": user_email,
+            "access_token": res.access_token,
+            "token_expiry": expiry_delta,
+            "scopes": getattr(res, "scope", None),
+            "profile": {
+                "email": user_email,
+                "name": identity_claims.get("name") or account.name.display_name,
+                "email_verified": identity_claims.get("email_verified"),
+            },
+        }
     except Exception as e:
         print(f"Dropbox Callback Error: {e}")
         raise HTTPException(status_code=400, detail=f"OAuth Handshake Failure: {str(e)}")
 
 @router.get("/status")
-async def get_dropbox_status(user_id: str):
-    user = await get_user(user_id)
+async def get_dropbox_status(current_user: dict = Depends(get_current_user)):
+    user = await get_user(current_user["user_id"])
     if not user or not user.get("dropbox_refresh_token"):
         return {"connected": False}
-    return {"connected": True, "email": user.get("dropbox_account_email")}
+    return {
+        "connected": True,
+        "email": user.get("dropbox_account_email"),
+        "name": user.get("dropbox_display_name"),
+        "scopes": user.get("dropbox_scope"),
+    }
 
 @router.post("/disconnect")
-async def disconnect_dropbox(user_id: str):
-    await update_user_dropbox(user_id, {
+async def disconnect_dropbox(current_user: dict = Depends(get_current_user)):
+    await update_user_dropbox(current_user["user_id"], {
         "dropbox_access_token": None,
         "dropbox_refresh_token": None,
         "dropbox_token_expiry": None,
-        "dropbox_account_email": None
+        "dropbox_account_email": None,
+        "dropbox_scope": None,
+        "dropbox_subject": None,
+        "dropbox_display_name": None,
+        "dropbox_email_verified": None,
     })
     return {"success": True}
+
+
+def _decode_id_token(id_token: str | None) -> dict:
+    if not id_token:
+        return {}
+    try:
+        payload = id_token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        return json.loads(base64.urlsafe_b64decode(payload).decode("utf-8"))
+    except Exception:
+        return {}

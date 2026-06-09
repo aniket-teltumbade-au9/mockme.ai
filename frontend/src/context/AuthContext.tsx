@@ -1,45 +1,87 @@
 "use client";
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useCallback, useState, ReactNode, useEffect } from "react";
+import axios from "axios";
 
 interface AuthContextType {
   userId: string | null;
+  accessToken: string | null;
   setUserId: (id: string | null) => void;
+  setDropboxAuth: (id: string, accessToken: string) => void;
   logout: () => void;
   isInitialized: boolean;
+  sessionExpired: boolean;
+  setSessionExpired: (expired: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [userId, setUserIdState] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [userId, setUserIdState] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("auth_user_id");
+  });
+  const [accessToken, setAccessTokenState] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("dropbox_access_token");
+  });
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const isInitialized = true;
 
-  useEffect(() => {
-    // Persist/load from local storage
-    const storedUser = localStorage.getItem("auth_user_id");
-    console.log("DEBUG: AuthContext initializing, storedUser:", storedUser);
-    if (storedUser) setUserIdState(storedUser);
-    setIsInitialized(true);
+  const setUserId = useCallback((id: string | null) => {
+    if (id) localStorage.setItem("auth_user_id", id);
+    else {
+      localStorage.removeItem("auth_user_id");
+      localStorage.removeItem("dropbox_access_token");
+      setAccessTokenState(null);
+    }
+    setUserIdState(id);
+    setSessionExpired(false);
   }, []);
 
-  const setUserId = (id: string | null) => {
-    console.log("DEBUG: Setting userId:", id);
-    if (id) localStorage.setItem("auth_user_id", id);
-    else localStorage.removeItem("auth_user_id");
+  const setDropboxAuth = useCallback((id: string, token: string) => {
+    localStorage.setItem("auth_user_id", id);
+    localStorage.setItem("dropbox_access_token", token);
     setUserIdState(id);
-  };
+    setAccessTokenState(token);
+    setSessionExpired(false);
+  }, []);
 
-  const logout = () => {
-    setUserId(null);
-  };
+  const logout = useCallback(() => {
+    localStorage.removeItem("dropbox_access_token");
+    localStorage.removeItem("auth_user_id");
+    setAccessTokenState(null);
+    setUserIdState(null);
+    setSessionExpired(false);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ userId, setUserId, logout, isInitialized }}>
-      {children}
+    <AuthContext.Provider value={{ userId, accessToken, setUserId, setDropboxAuth, logout, isInitialized, sessionExpired, setSessionExpired }}>
+      <AxiosInterceptor setSessionExpired={setSessionExpired}>
+        {children}
+      </AxiosInterceptor>
     </AuthContext.Provider>
   );
 };
 
+function AxiosInterceptor({ children, setSessionExpired }: { children: ReactNode, setSessionExpired: (v: boolean) => void }) {
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          setSessionExpired(true);
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [setSessionExpired]);
+
+  return <>{children}</>;
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

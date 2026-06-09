@@ -41,3 +41,7 @@ class User(BaseModel):
     dropbox_refresh_token: Optional[str] = None
     dropbox_token_expiry: Optional[datetime] = None
     dropbox_account_email: Optional[str] = None
+    dropbox_scope: Optional[List[str]] = None
+    dropbox_subject: Optional[str] = None
+    dropbox_display_name: Optional[str] = None
+    dropbox_email_verified: Optional[bool] = None

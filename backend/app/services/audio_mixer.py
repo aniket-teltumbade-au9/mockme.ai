@@ -38,7 +38,7 @@ async def mix_audio(mic_audio_path: str, tts_clips: list[dict], output_path: str
         # Execute ffmpeg
         (
             ffmpeg
-            .output(*inputs, "aout", output_path, filter_complex=filter_complex, map="[aout]")
+            .output(*inputs, output_path, filter_complex=filter_complex, map="[aout]")
             .overwrite_output()
             .run(capture_stdout=True, capture_stderr=True)
         )

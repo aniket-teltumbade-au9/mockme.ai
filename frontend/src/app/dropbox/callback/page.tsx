@@ -7,7 +7,7 @@ import { API_BASE } from "@/utils/apiConfig";
 import { useAuth } from "@/context/AuthContext";
 
 function DropboxCallbackContent() {
-  const { setUserId } = useAuth();
+  const { setDropboxAuth } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -19,8 +19,10 @@ function DropboxCallbackContent() {
     const codeVerifier = localStorage.getItem('dropbox_code_verifier');
 
     if (!code || !codeVerifier || !state) {
-      setStatus('error');
-      setErrorMsg('Authorization code, state, or verifier missing.');
+      queueMicrotask(() => {
+        setStatus('error');
+        setErrorMsg('Authorization code, state, or verifier missing.');
+      });
       return;
     }
 
@@ -30,8 +32,7 @@ function DropboxCallbackContent() {
           params: { code, code_verifier: codeVerifier, state }
         });
 
-        // Use the user_id returned by the backend
-        setUserId(res.data.user_id);
+        setDropboxAuth(res.data.user_id, res.data.access_token);
 
         setStatus('success');
         localStorage.removeItem('dropbox_code_verifier');
@@ -44,7 +45,7 @@ function DropboxCallbackContent() {
     };
 
     completeAuth();
-  }, [searchParams, router, setUserId]);
+  }, [searchParams, router, setDropboxAuth]);
 // ...
   return (
     <div className="container layout-conversational">
