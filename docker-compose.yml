@@ -1,0 +1,136 @@
+services:
+
+  # ── Backend (FastAPI / Python) ─────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: myapp-backend:latest
+    container_name: backend
+    restart: unless-stopped
+    env_file:
+      - backend/.env            # backend-specific overrides (optional)
+    environment:
+      - PYTHONUNBUFFERED=1      # stream logs immediately
+      - PYTHONDONTWRITEBYTECODE=1
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import socket; s=socket.socket(); s.connect((\"localhost\", 8000))' 2>/dev/null && echo ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - app-net
+
+
+  # ── Frontend (Next.js) ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: myapp-frontend:latest
+    container_name: frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - app-net
+
+
+  # ── Dev-only: backend with hot-reload ──────────────────────────────────────
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    image: myapp-backend:dev
+    container_name: backend-dev
+    profiles: ["dev"]
+    restart: unless-stopped
+    env_file: [backend/.env]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./backend:/app:cached
+    ports:
+      - "8000:8000"
+    command: >
+      python3 -m uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    networks:
+      - app-net
+
+
+  # ── Dev-only: frontend with hot-reload ─────────────────────────────────────
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: deps
+    image: myapp-frontend:dev
+    container_name: frontend-dev
+    profiles: ["dev"]
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://backend-dev:8000
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    command: sh -c "corepack enable && pnpm dev"
+    depends_on:
+      - backend-dev
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1G
+    networks:
+      - app-net
+
+
+networks:
+  app-net:
+    driver: bridge
