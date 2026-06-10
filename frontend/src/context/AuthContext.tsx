@@ -16,16 +16,18 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [userId, setUserIdState] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("auth_user_id");
-  });
-  const [accessToken, setAccessTokenState] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("dropbox_access_token");
-  });
+  const [userId, setUserIdState] = useState<string | null>(null);
+  const [accessToken, setAccessTokenState] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
-  const isInitialized = true;
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    const storedId = localStorage.getItem("auth_user_id");
+    const storedToken = localStorage.getItem("dropbox_access_token");
+    if (storedId) setUserIdState(storedId);
+    if (storedToken) setAccessTokenState(storedToken);
+    setIsInitialized(true);
+  }, []);
 
   const setUserId = useCallback((id: string | null) => {
     if (id) localStorage.setItem("auth_user_id", id);

@@ -26,7 +26,19 @@ async def test_db_connection():
         await client.admin.command('ping')
         print("MongoDB connection successful")
     except Exception as e:
-        print(f"MongoDB connection failed: {e}")
+        err_str = str(e)
+        print(f"MongoDB connection failed: {err_str}")
+        if "TLSV1_ALERT_INTERNAL_ERROR" in err_str or "SSL handshake failed" in err_str:
+            print("")
+            print("=" * 70)
+            print("MongoDB Atlas SSL Error Detected")
+            print("=" * 70)
+            print("This usually means your IP is not whitelisted in MongoDB Atlas.")
+            print("")
+            print("Fix: Go to https://cloud.mongodb.com -> Network Access")
+            print("     -> Add IP Address -> Add Current IP (or 0.0.0.0/0 for dev)")
+            print("=" * 70)
+            print("")
 
 async def get_user(user_id: str):
     user = await db.users.find_one({"user_id": user_id})

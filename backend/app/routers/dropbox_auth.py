@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/dropbox", tags=["dropbox_auth"])
 
 DROPBOX_APP_KEY = os.getenv("DROPBOX_APP_KEY", "")
 DROPBOX_APP_SECRET = os.getenv("DROPBOX_APP_SECRET", "")
-REDIRECT_URI = os.getenv("DROPBOX_REDIRECT_URI", "http://localhost:3000/dropbox/callback")
+REDIRECT_URI = os.getenv("DROPBOX_REDIRECT_URI", "http://localhost:7175/dropbox/callback")
 CSRF_TOKEN_KEY = "dropbox-auth-csrf-token"
 DROPBOX_SCOPES = [
     "openid",

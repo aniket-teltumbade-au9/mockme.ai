@@ -18,7 +18,7 @@ import { InterviewHistoryCard } from "@/components/Dashboard/InterviewHistoryCar
 import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
 import { AnalysisDrawer } from "@/components/Dashboard/AnalysisDrawer";
 import { PreflightWizard } from "@/components/PreflightWizard";
-import { LiveTranscript, VoiceSelector, TTS_VOICES, TTSVoice } from "@/components/InterviewOverlays";
+import { LiveTranscript, VoiceSelector, TTSVoice } from "@/components/InterviewOverlays";
 import { API_BASE, authHeaders } from "@/utils/apiConfig";
 import { useAuth } from "@/context/AuthContext";
 import { LoginScreen } from "@/components/LoginScreen";
@@ -37,6 +37,17 @@ interface UiConfig {
   editorConfig: EditorConfig;
   voice_script?: string;
 }
+
+const PERSONAS = [
+  { id: "", label: "Default (Based on JD)" },
+  { id: "Friendly", label: "Friendly" },
+  { id: "Calm", label: "Calm" },
+  { id: "Strict", label: "Strict" },
+  { id: "Technical", label: "Technical" },
+  { id: "Behavioral", label: "Behavioral" },
+  { id: "Challenging", label: "Challenging" },
+  { id: "Experienced Peer", label: "Experienced Peer" },
+];
 
 interface UserProgress {
   total_interviews: number;
@@ -83,7 +94,8 @@ export default function InterviewPage() {
   const [lastSarahText, setLastSarahText] = useState<string | null>(null);
 
   // Voice selection — controls backend TTS accent
-  const [selectedVoice, setSelectedVoice] = useState<TTSVoice>(TTS_VOICES[0]);
+  const [voiceList, setVoiceList] = useState<TTSVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<TTSVoice>({ name: "English (US)", lang_code: "en", flag: "\u{1f1fa}\u{1f1f8}" });
 
   // Code submission state
   const [codeSyncState, setCodeSyncState] = useState<"idle" | "syncing" | "synced">("idle");
@@ -98,6 +110,7 @@ export default function InterviewPage() {
     stopRecording: stopFullSessionRecording,
   } = useInterviewRecorder();
 
+  const [selectedPersona, setSelectedPersona] = useState(PERSONAS[0]);
   const [jd, setJd] = useState("");
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [showJDScreen, setShowJDScreen] = useState(false);
@@ -127,14 +140,27 @@ export default function InterviewPage() {
     }
   }, [userId]);
 
-  const handleRetryFinalize = async (interview: InterviewRecord) => {
+  const fetchVoices = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/voices`);
+      if (res.data?.length > 0) {
+        setVoiceList(res.data);
+        setSelectedVoice(res.data[0]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch voices", err);
+    }
+  }, []);
+
+  const handleRetryAftersave = async (interview: InterviewRecord) => {
     try {
       await axios.post(`${API_BASE}/interviews/${interview.sessionId}/refinalize`, null, { headers: authHeaders() });
       await fetchHistory();
-      alert("Refinalization started. Please check back in a moment.");
+      alert("Re-processing started. Please check back in a moment.");
     } catch (err) {
       console.error("Retry failed", err);
-      alert("Failed to restart finalization. The server might have lost the raw recording.");
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      alert(detail || "Failed to restart processing. Please try connecting to Dropbox first and try again.");
     }
   };
 
@@ -155,7 +181,11 @@ export default function InterviewPage() {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const res = await axios.post(`${API_BASE}/session/start`, { jd: pendingJd }, { headers: authHeaders() });
+      const res = await axios.post(`${API_BASE}/session/start`, {
+        jd: pendingJd,
+        persona: selectedPersona.id || undefined,
+        voice_lang: selectedVoice.lang_code,
+      }, { headers: authHeaders() });
       if (res.data.error) {
         setErrorMsg(res.data.message);
         setIsLoading(false);
@@ -246,24 +276,23 @@ export default function InterviewPage() {
     setIsRecording(false);
   };
 
-  const handleFinalization = async (sid: string) => {
+  const handleAftersave = async (sid: string) => {
     setIsFinalizing(true);
     try {
-      // Stop the long-running full-session recorder and get the complete blob
       const fullAudioBlob = await stopFullSessionRecording();
       const formData = new FormData();
+      formData.append("sessionId", sid);
       formData.append("audio", fullAudioBlob, "session_audio.webm");
-      await axios.post(`${API_BASE}/interviews/${sid}/finalize`, formData, { headers: authHeaders() });
+      await axios.post(`${API_BASE}/interview/aftersave`, formData, { headers: authHeaders() });
 
       setSessionIdSynced(null);
       setIsFinalizing(false);
 
-      // Refresh history to show the new pending session
       await fetchHistory();
       await fetchProgress();
     } catch (err) {
-      console.error("Finalization failed", err);
-      alert("Failed to send recording to server. Please check your connection.");
+      console.error("Aftersave failed", err);
+      alert("Failed to save recording. Please check your connection.");
       setIsFinalizing(false);
     }
   };
@@ -281,7 +310,15 @@ export default function InterviewPage() {
       playAudio(res.data.uiConfig?.voice_script || "I understand.");
 
       if (res.data.uiConfig?.currentState === "STATE_3") {
-        handleFinalization(currentSessionId);
+        setIsLoading(false);
+        setIsSpeaking(false);
+        setIsFinalizing(true);
+        try { await stopFullSessionRecording(); } catch {}
+        await fetchHistory();
+        await fetchProgress();
+        setIsFinalizing(false);
+        setSessionIdSynced(null);
+        return;
       }
     } catch (err) {
       console.error("Error sending audio", err);
@@ -305,10 +342,17 @@ export default function InterviewPage() {
     if (!sessionIdRef.current) return;
     setCodeSyncState("syncing");
     try {
-      await axios.post(`${API_BASE}/interview/respond-code`, null, {
-        params: { sessionId: sessionIdRef.current, code },
+      const res = await axios.post(`${API_BASE}/interview/respond-code`, {
+        sessionId: sessionIdRef.current,
+        code,
+      }, {
         headers: authHeaders(),
       });
+      setUiConfigSynced(res.data.uiConfig);
+      const voiceScript = res.data.uiConfig?.voice_script;
+      if (voiceScript) {
+        playAudio(voiceScript);
+      }
       setCodeSyncState("synced");
     } catch (err) {
       console.error("Failed to sync code", err);
@@ -322,12 +366,13 @@ export default function InterviewPage() {
   };
 
   useEffect(() => {
+    fetchVoices();
     if (!isInitialized || !userId || !accessToken) return;
     (async () => {
       await fetchProgress();
       await fetchHistory();
     })();
-  }, [fetchProgress, fetchHistory, accessToken, isInitialized, userId]);
+  }, [fetchProgress, fetchHistory, fetchVoices, accessToken, isInitialized, userId]);
 
   if (!isInitialized) {
     return (
@@ -560,7 +605,7 @@ export default function InterviewPage() {
                           setSelectedInterview(i);
                           setShowAnalysis(true);
                         }}
-                        onRetryFinalize={handleRetryFinalize}
+                        onRetryFinalize={handleRetryAftersave}
                       />
                     ))
                   ) : (
@@ -616,6 +661,28 @@ export default function InterviewPage() {
                   marginBottom: "1.5rem",
                 }}
               />
+              <div style={{ marginBottom: "1.5rem" }}>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>
+                  Interview Persona
+                </label>
+                <select
+                  value={selectedPersona.id}
+                  onChange={(e) => setSelectedPersona(PERSONAS.find(p => p.id === e.target.value) || PERSONAS[0])}
+                  style={{
+                    width: "100%",
+                    background: "var(--secondary)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "12px",
+                    padding: "0.75rem 1rem",
+                    color: "white",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  {PERSONAS.map((p) => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
               <div style={{ display: "flex", gap: "1rem" }}>
                 <button
                   onClick={() => setShowJDScreen(false)}
@@ -684,7 +751,7 @@ export default function InterviewPage() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <VoiceSelector selectedVoice={selectedVoice} onSelect={setSelectedVoice} />
+          <VoiceSelector voices={voiceList} selectedVoice={selectedVoice} onSelect={setSelectedVoice} />
           <div
             className="state-badge"
             style={{

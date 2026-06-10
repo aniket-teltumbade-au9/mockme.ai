@@ -152,7 +152,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
                 </div>
             )}
 
-            {!isFinished && onRetryFinalize && (
+            {!interview.dropbox_audio_url && onRetryFinalize && (
                 <button 
                   onClick={() => onRetryFinalize(interview)}
                   className="secondary"
@@ -160,11 +160,11 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
                     padding: '0.5rem 1rem', 
                     fontSize: '0.8rem',
                     borderRadius: 'var(--radius-sm)',
-                    borderColor: isPending ? 'var(--primary)' : 'var(--danger)',
-                    color: isPending ? 'var(--primary)' : 'var(--danger)'
+                    borderColor: 'var(--primary)',
+                    color: 'var(--primary)'
                   }}
                 >
-                    {isPending ? 'Refinalize' : 'Retry'}
+                    Retry
                 </button>
             )}
         </div>

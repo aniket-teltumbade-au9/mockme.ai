@@ -45,7 +45,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://backend:8000
     ports:
-      - "3000:3000"
+      - "7175:7175"
     depends_on:
       backend:
         condition: service_healthy
@@ -58,7 +58,7 @@ services:
           cpus: "0.25"
           memory: 128M
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:7175/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -118,7 +118,7 @@ services:
       - /app/node_modules
       - /app/.next
     ports:
-      - "3000:3000"
+      - "7175:7175"
     command: sh -c "corepack enable && pnpm dev"
     depends_on:
       - backend-dev

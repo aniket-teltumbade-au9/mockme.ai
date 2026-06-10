@@ -24,6 +24,9 @@ class Session(BaseModel):
     detectedGaps: List[str] = []
     currentCodeWorkspace: str = ""
     jd: Optional[str] = None
+    persona: Optional[str] = None
+    experience_level: Optional[str] = None
+    voice_lang: str = "en-in"
     
     # Finalization fields
     finalized: bool = False
@@ -34,6 +37,7 @@ class Session(BaseModel):
     finalization_error: Optional[str] = None
     analysis: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = None
+    audio_duration_accumulator: float = 0.0
 
 class User(BaseModel):
     user_id: str
