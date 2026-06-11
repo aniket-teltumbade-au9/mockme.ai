@@ -4,8 +4,7 @@ from app.services.database import get_session, get_user, update_session, db
 from app.services.auth import get_current_user
 from app.services.dropbox_service import DropboxService
 from app.services.analysis_builder import build_groq_session_analysis
-from app.services.audio_mixer import mix_audio
-from app.services.storage import get_storage_dir, get_mic_path, get_mixed_path
+from app.services.storage import get_storage_dir, get_mic_path, get_mixed_path, build_final_interview_audio
 import os
 
 router = APIRouter(prefix="/api/interviews", tags=["interviews"])
@@ -74,18 +73,26 @@ async def finalize_interview_task(session_id: str, mic_path_override: str | None
 
     mixed_path = None
 
-    # Mix with TTS clips if mic recording exists
-    if has_mic:
-        try:
-            mixed_path = get_mixed_path(session_id)
-            print(f"DEBUG: Mixing audio mic={mic_path} + {len(tts_clips)} tts clips -> {mixed_path}")
-            await mix_audio(mic_path, tts_clips, mixed_path)
-            print(f"DEBUG: Mixed audio saved -> {mixed_path} ({os.path.getsize(mixed_path)} bytes)")
-        except Exception as e:
-            print(f"MIXING ERROR: {e}")
-            mixed_path = mic_path
-    else:
-        print(f"WARN: No mic recording available for mixing session {session_id}")
+    # Build final interview audio by concatenating all clips in chronological order
+    # (sarah_0 → turn_1 → sarah_1 → turn_2 → sarah_2 → ...)
+    # This replaces the broken overlay-based mix that created overlapping chaos.
+    try:
+        mixed_path = get_mixed_path(session_id)
+        print(f"DEBUG: Building final interview audio chronologically -> {mixed_path}")
+        built = build_final_interview_audio(session_id, tts_clips, mixed_path)
+        if built:
+            print(f"DEBUG: Final interview audio built -> {built}")
+        else:
+            print(f"WARN: Could not build final interview audio (no clips?)")
+            mixed_path = None
+    except Exception as e:
+        print(f"FINAL AUDIO BUILD ERROR: {e}")
+        mixed_path = None
+
+    # Fallback to combined mic if final audio couldn't be built
+    if not mixed_path and has_mic:
+        mixed_path = mic_path
+        print(f"DEBUG: Falling back to combined mic -> {mixed_path}")
 
     # Build Analysis via Groq
     print(f"DEBUG: Building analysis via Groq...")

@@ -2,6 +2,7 @@ import os
 import subprocess
 import shutil
 import glob
+import re
 
 def get_storage_dir() -> str:
     """Return the absolute path to the recordings storage directory.
@@ -110,3 +111,70 @@ def concatenate_turn_audio(session_id: str) -> str:
             pass
 
     return output_path
+
+
+def build_final_interview_audio(session_id: str, tts_clips: list, output_path: str) -> str:
+    """Build final interview audio by concatenating ALL clips in chronological order:
+    sarah_0 (greeting) → turn_1 → sarah_1 → turn_2 → sarah_2 → ...
+    Handles gaps from code-only turns (respond-code produces no turn file).
+    Uses ffmpeg concat FILTER which works on decoded frames (handles mixed webm/mp3 inputs).
+    Returns output_path on success, empty string on failure."""
+    storage_dir = get_storage_dir()
+
+    # --- Collect files in chronological order ---
+
+    # 1. Greeting is always sarah_0
+    ordered = []
+    greeting_path = get_tts_clip_path(session_id, 0)
+    if os.path.exists(greeting_path):
+        ordered.append(greeting_path)
+
+    # 2. Determine max index from tts_clips paths
+    max_idx = 0
+    for clip in tts_clips:
+        path = clip.get('path', '')
+        m = re.search(r'_sarah_(\d+)\.mp3$', path)
+        if m:
+            idx = int(m.group(1))
+            if idx > max_idx:
+                max_idx = idx
+
+    # 3. For each idx from 1..max: add turn (if exists), then sarah (if exists)
+    for idx in range(1, max_idx + 1):
+        turn_path = get_turn_audio_path(session_id, idx)
+        if os.path.exists(turn_path):
+            ordered.append(turn_path)
+        sarah_path = get_tts_clip_path(session_id, idx)
+        if os.path.exists(sarah_path):
+            ordered.append(sarah_path)
+
+    if not ordered:
+        print(f"WARN: No audio files found to build final interview for {session_id}")
+        return ""
+
+    print(f"DEBUG: Building final interview audio from {len(ordered)} files in order:")
+    for i, p in enumerate(ordered):
+        fname = os.path.basename(p)
+        sz = os.path.getsize(p) if os.path.exists(p) else 0
+        print(f"DEBUG:   [{i}] {fname} ({sz} bytes)")
+
+    # --- Concat all files using ffmpeg concat FILTER (works on decoded frames) ---
+    cmd = ["ffmpeg", "-y"]
+    for f in ordered:
+        cmd += ["-i", f]
+    n = len(ordered)
+    filter_inputs = "".join(f"[{i}:a]" for i in range(n))
+    filter_str = f"{filter_inputs}concat=n={n}:v=0:a=1[aout]"
+    cmd += ["-filter_complex", filter_str, "-map", "[aout]", "-c:a", "libmp3lame", "-q:a", "2", output_path]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    if result.returncode != 0:
+        print(f"FFMPEG concat error building final audio: {result.stderr[:500]}")
+        return ""
+
+    if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+        print(f"DEBUG: Final interview audio built -> {output_path} ({os.path.getsize(output_path)} bytes)")
+        return output_path
+
+    print(f"ERROR: Final interview audio not created at {output_path}")
+    return ""
