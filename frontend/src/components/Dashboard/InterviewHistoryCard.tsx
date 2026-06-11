@@ -10,7 +10,7 @@ interface Interview {
   sessionId: string;
   created_at: string;
   analysis?: InterviewAnalysis;
-  dropbox_audio_url?: string;
+  dropbox_video_url?: string;
   finalized?: boolean;
   finalization_error?: string;
 }
@@ -118,7 +118,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
         </div>
         
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {interview.dropbox_audio_url && isFinished && (
+            {interview.dropbox_video_url && isFinished && (
                 <button 
                   onClick={() => onPlayAudio(interview)} 
                   className="secondary" 
@@ -128,7 +128,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
                     width: '36px',
                     height: '36px'
                   }}
-                  title="Play Recording"
+                  title="Play Video"
                 >
                     <Play size={16} fill="currentColor" />
                 </button>
@@ -152,7 +152,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
                 </div>
             )}
 
-            {!interview.dropbox_audio_url && onRetryFinalize && (
+            {!interview.dropbox_video_url && onRetryFinalize && (
                 <button 
                   onClick={() => onRetryFinalize(interview)}
                   className="secondary"

@@ -29,8 +29,9 @@ from app.services.tts import get_audio_bytes
 from app.utils.parser import parse_llm_response
 from app.services.auth import get_current_user
 from app.services.database import db, get_user_interviews, get_user_progress, can_start_interview, save_interview_session, update_progress, update_session, test_db_connection
-from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_path, get_turn_audio_path, concatenate_turn_audio
+from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_path, get_turn_audio_path, get_user_video_path, get_avatar_video_path, concatenate_turn_audio
 from app.services.voice_service import get_or_refresh_voices
+from app.services.video_builder import create_avatar_video, extract_audio_from_video
 
 from app.routers import dropbox_auth, interviews, code_runner
 from app.routers.interviews import finalize_interview_task
@@ -186,15 +187,19 @@ async def start_session(
     
     session.history.append({"role": "assistant", "content": response_text})
     
-    # Generate and save initial TTS audio clip
+    # Generate and save initial TTS audio clip + avatar video
     tts_audio = get_audio_bytes(voice_script, session.voice_lang)
     tts_audio_duration = get_audio_duration(tts_audio)
-    
+
     storage_dir = get_storage_dir()
+    # Save TTS audio
     clip_path = get_tts_clip_path(session_id, 0)
     with open(clip_path, "wb") as f:
         f.write(tts_audio)
     print(f"DEBUG: Saved initial TTS clip to {clip_path}")
+    # Create avatar video from TTS
+    avatar_path = get_avatar_video_path(session_id, 0)
+    create_avatar_video(clip_path, avatar_path)
     
     # Track initial clip at start_time 0.0
     session.tts_clips.append({"path": clip_path, "start_time": 0.0})
@@ -304,7 +309,7 @@ async def respond_audio(
                     "finalized": False,
                     "finalization_error": None,
                 })
-                background_tasks.add_task(finalize_interview_task, sessionId, combined_mic_path)
+                background_tasks.add_task(finalize_interview_task, sessionId)
                 print(f"DEBUG: finalize_interview_task scheduled for {sessionId}")
             else:
                 print(f"ERROR: Failed to build combined mic for session {sessionId}")
@@ -316,6 +321,112 @@ async def respond_audio(
         "audio_duration_accumulator": session.audio_duration_accumulator,
     })
     print(f"=== RESPOND-AUDIO END session={sessionId} ===\n")
+
+    return {
+        "uiConfig": ui_config,
+        "audio": "",
+        "transcription": user_text
+    }
+
+@app.post("/api/interview/respond-video")
+async def respond_video(
+    background_tasks: BackgroundTasks,
+    sessionId: str = Form(...),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Accept a webcam video blob (video/webm). Extract audio for transcription,
+    save user video, generate Sarah's avatar video response, auto-finalize on STATE_3."""
+    user_id = current_user["user_id"]
+    print(f"\n=== RESPOND-VIDEO START session={sessionId} user={user_id} ===")
+
+    if sessionId not in sessions:
+        session_data = await db.interviews.find_one({"sessionId": sessionId, "user_id": user_id})
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Session not found")
+        sessions[sessionId] = Session(**session_data)
+
+    session = sessions[sessionId]
+    if session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Session does not belong to authenticated user")
+
+    if not session.currentCodeWorkspace and session.jd:
+        session.currentCodeWorkspace = session.jd
+
+    if session.audio_duration_accumulator == 0.0 and session.tts_clips:
+        for clip in session.tts_clips:
+            clip_duration = get_audio_duration_from_file(clip.get('path', ''))
+            session.audio_duration_accumulator += clip_duration
+
+    jd = session.currentCodeWorkspace
+    video_bytes = await file.read()
+    print(f"DEBUG: Turn video received: {len(video_bytes)} bytes, filename={file.filename}")
+
+    # Save incoming user video
+    turn_index = len(session.tts_clips)
+    user_video_path = get_user_video_path(sessionId, turn_index)
+    with open(user_video_path, "wb") as f:
+        f.write(video_bytes)
+    print(f"DEBUG: Saved USER video #{turn_index} -> {user_video_path} ({len(video_bytes)} bytes)")
+
+    # Extract audio from video for transcription
+    temp_wav = os.path.join(get_storage_dir(), f"{sessionId}_turn_{turn_index}_temp.wav")
+    audio_extracted = extract_audio_from_video(user_video_path, temp_wav)
+    if audio_extracted:
+        with open(temp_wav, "rb") as f:
+            audio_bytes = f.read()
+        user_audio_duration = get_audio_duration(audio_bytes)
+        user_text = transcribe_audio(audio_bytes)
+        os.remove(temp_wav)
+    else:
+        user_audio_duration = 0.0
+        user_text = "[Silence or no audio]"
+    print(f"DEBUG: Transcription: '{user_text}'")
+
+    session.history.append({"role": "user", "content": user_text})
+    response_text = chat_with_llm(session.history, jd_context=jd)
+    session.history.append({"role": "assistant", "content": response_text})
+
+    ui_config, voice_script = parse_llm_response(response_text)
+    ui_config["voice_script"] = voice_script
+
+    # Generate TTS and create avatar video
+    tts_audio = get_audio_bytes(voice_script, session.voice_lang)
+    tts_audio_duration = get_audio_duration(tts_audio)
+
+    tts_path = get_tts_clip_path(sessionId, turn_index)
+    with open(tts_path, "wb") as f:
+        f.write(tts_audio)
+    print(f"DEBUG: Saved SARAH TTS #{turn_index} -> {tts_path} ({len(tts_audio)} bytes)")
+
+    avatar_path = get_avatar_video_path(sessionId, turn_index)
+    background_tasks.add_task(create_avatar_video, tts_path, avatar_path)
+
+    clip_start_time = session.audio_duration_accumulator
+    session.tts_clips.append({"path": tts_path, "start_time": clip_start_time})
+    session.audio_duration_accumulator += user_audio_duration + tts_audio_duration
+    print(f"DEBUG: Accumulator now={session.audio_duration_accumulator:.2f}s turn_count={turn_index + 1}")
+
+    if 'currentState' in ui_config:
+        session.currentState = ui_config['currentState']
+        print(f"DEBUG: State -> {session.currentState}")
+        if session.currentState == "STATE_3":
+            print(f"=== STATE_3 REACHED - Auto-finalizing session {sessionId} ===")
+            await update_progress(session.user_id, sessionId, ui_config.get("detectedGaps", []), voice_script)
+            await update_session(sessionId, {
+                "finalized": False,
+                "finalization_error": None,
+            })
+            background_tasks.add_task(finalize_interview_task, sessionId)
+            print(f"DEBUG: finalize_interview_task scheduled for {sessionId}")
+
+    await update_session(sessionId, {
+        "history": [h.dict() if hasattr(h, 'dict') else h for h in session.history],
+        "tts_clips": session.tts_clips,
+        "currentState": session.currentState,
+        "audio_duration_accumulator": session.audio_duration_accumulator,
+    })
+    print(f"=== RESPOND-VIDEO END session={sessionId} ===\n")
 
     return {
         "uiConfig": ui_config,
@@ -356,7 +467,7 @@ async def aftersave_interview(
         "finalization_error": None
     })
 
-    background_tasks.add_task(finalize_interview_task, sessionId, mic_path)
+    background_tasks.add_task(finalize_interview_task, sessionId)
     return {"success": True, "message": "Auto-finalization triggered after last recording"}
 
 class RespondCodeRequest(BaseModel):
@@ -413,6 +524,10 @@ async def respond_code(
         f.write(tts_audio)
     print(f"DEBUG: Saved code response TTS clip to {clip_path}")
 
+    # Create avatar video from TTS (background)
+    avatar_path = get_avatar_video_path(sessionId, clip_index)
+    background_tasks.add_task(create_avatar_video, clip_path, avatar_path)
+
     clip_start_time = session.audio_duration_accumulator
     session.tts_clips.append({"path": clip_path, "start_time": clip_start_time})
     session.audio_duration_accumulator += tts_audio_duration
@@ -422,18 +537,12 @@ async def respond_code(
         if session.currentState == "STATE_3":
             print(f"=== STATE_3 REACHED via respond-code - Auto-finalizing session {sessionId} ===")
             await update_progress(session.user_id, sessionId, ui_config.get("detectedGaps", []), voice_script)
-            combined_mic_path = concatenate_turn_audio(sessionId)
-            if combined_mic_path and os.path.exists(combined_mic_path):
-                print(f"DEBUG: Combined mic saved -> {combined_mic_path} ({os.path.getsize(combined_mic_path)} bytes)")
-                await update_session(sessionId, {
-                    "raw_mic_path": combined_mic_path,
-                    "finalized": False,
-                    "finalization_error": None,
-                })
-                background_tasks.add_task(finalize_interview_task, sessionId, combined_mic_path)
-                print(f"DEBUG: finalize_interview_task scheduled for {sessionId}")
-            else:
-                print(f"ERROR: Failed to build combined mic for session {sessionId} (via respond-code)")
+            await update_session(sessionId, {
+                "finalized": False,
+                "finalization_error": None,
+            })
+            background_tasks.add_task(finalize_interview_task, sessionId)
+            print(f"DEBUG: finalize_interview_task scheduled for {sessionId}")
 
     await update_session(sessionId, {
         "history": session.history,
@@ -446,6 +555,40 @@ async def respond_code(
         "uiConfig": ui_config,
         "audio": ""
     }
+
+class ChatRequest(BaseModel):
+    sessionId: str
+    message: str
+
+@app.post("/api/interview/chat")
+async def chat(
+    request: ChatRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Simple text chat with the LLM (no TTS). For quick exchanges during the interview."""
+    user_id = current_user["user_id"]
+    sessionId = request.sessionId
+    message = request.message
+
+    if sessionId not in sessions:
+        session_data = await db.interviews.find_one({"sessionId": sessionId, "user_id": user_id})
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Session not found")
+        sessions[sessionId] = Session(**session_data)
+
+    session = sessions[sessionId]
+    if session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Session does not belong to authenticated user")
+
+    session.history.append({"role": "user", "content": message})
+    response_text = chat_with_llm(session.history, jd_context=session.currentCodeWorkspace or "")
+    session.history.append({"role": "assistant", "content": response_text})
+
+    await update_session(sessionId, {
+        "history": [h.dict() if hasattr(h, 'dict') else h for h in session.history],
+    })
+
+    return {"response": response_text}
 
 if __name__ == "__main__":
     import uvicorn

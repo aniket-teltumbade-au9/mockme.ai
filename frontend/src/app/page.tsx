@@ -11,14 +11,17 @@ import {
   History,
   CheckCircle2,
   Send,
+  Video,
+  VideoOff,
 } from "lucide-react";
 import { CodeEditor } from "@/components/CodeEditor";
-import { useInterviewRecorder } from "@/hooks/useInterviewRecorder";
 import { InterviewHistoryCard } from "@/components/Dashboard/InterviewHistoryCard";
 import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
 import { AnalysisDrawer } from "@/components/Dashboard/AnalysisDrawer";
 import { PreflightWizard } from "@/components/PreflightWizard";
 import { LiveTranscript, VoiceSelector, TTSVoice } from "@/components/InterviewOverlays";
+import { Whiteboard } from "@/components/Whiteboard";
+import { ChatPanel } from "@/components/ChatPanel";
 import { API_BASE, authHeaders } from "@/utils/apiConfig";
 import { useAuth } from "@/context/AuthContext";
 import { LoginScreen } from "@/components/LoginScreen";
@@ -58,7 +61,7 @@ interface InterviewRecord {
   sessionId: string;
   created_at: string;
   analysis?: { hire_verdict?: string };
-  dropbox_audio_url?: string;
+  dropbox_video_url?: string;
   finalized?: boolean;
   finalization_error?: string;
 }
@@ -101,14 +104,11 @@ export default function InterviewPage() {
   const [codeSyncState, setCodeSyncState] = useState<"idle" | "syncing" | "synced">("idle");
   const latestCodeRef = useRef<string>("");
 
-  // FIX 4: Separate per-turn MediaRecorder refs (do NOT reuse the full session recorder)
+  // Per-turn webcam+mic MediaRecorder
   const turnRecorderRef = useRef<MediaRecorder | null>(null);
   const turnChunksRef = useRef<Blob[]>([]);
-
-  const {
-    startRecording: startFullSessionRecording,
-    stopRecording: stopFullSessionRecording,
-  } = useInterviewRecorder();
+  const webcamStreamRef = useRef<MediaStream | null>(null);
+  const videoPreviewRef = useRef<HTMLVideoElement>(null);
 
   const [selectedPersona, setSelectedPersona] = useState(PERSONAS[0]);
   const [jd, setJd] = useState("");
@@ -117,7 +117,7 @@ export default function InterviewPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [interviewHistory, setInterviewHistory] = useState<InterviewRecord[]>([]);
   const [selectedInterview, setSelectedInterview] = useState<InterviewRecord | null>(null);
-  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   const fetchProgress = useCallback(async () => {
@@ -152,15 +152,15 @@ export default function InterviewPage() {
     }
   }, []);
 
-  const handleRetryAftersave = async (interview: InterviewRecord) => {
+  const handleRetryFinalize = async (interview: InterviewRecord) => {
     try {
-      await axios.post(`${API_BASE}/interviews/${interview.sessionId}/refinalize`, null, { headers: authHeaders() });
+      await axios.post(`${API_BASE}/interviews/${interview.sessionId}/refinalize`, {}, { headers: authHeaders() });
       await fetchHistory();
       alert("Re-processing started. Please check back in a moment.");
     } catch (err) {
       console.error("Retry failed", err);
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      alert(detail || "Failed to restart processing. Please try connecting to Dropbox first and try again.");
+      alert(detail || "Failed to restart processing.");
     }
   };
 
@@ -193,13 +193,6 @@ export default function InterviewPage() {
       }
       setSessionIdSynced(res.data.sessionId);
       setUiConfigSynced(res.data.uiConfig);
-
-      // Start the long-running full-session recorder (runs for the entire interview)
-      try {
-        await startFullSessionRecording();
-      } catch (err) {
-        console.warn("Full session recording could not start.", err);
-      }
 
       playAudio(res.data.uiConfig?.voice_script || "Hello, I'm Sarah. Let's start.");
     } catch (err) {
@@ -242,13 +235,18 @@ export default function InterviewPage() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // FIX 4: startRecording uses a dedicated per-turn MediaRecorder,
-  // completely separate from the full-session recorder.
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      webcamStreamRef.current = stream;
+      // Show webcam preview
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream;
+      }
       turnChunksRef.current = [];
-      const mr = new MediaRecorder(stream);
+      const mimeType = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"]
+        .find((t) => MediaRecorder.isTypeSupported(t)) || "video/webm";
+      const mr = new MediaRecorder(stream, { mimeType });
       mr.ondataavailable = (e) => {
         if (e.data.size > 0) turnChunksRef.current.push(e.data);
       };
@@ -256,48 +254,28 @@ export default function InterviewPage() {
       turnRecorderRef.current = mr;
       setIsRecording(true);
     } catch (err) {
-      console.error("Error starting turn recording", err);
+      console.error("Error starting webcam recording", err);
+      alert("Webcam access required. Please allow camera and microphone.");
     }
   };
 
-  // FIX 4: stopRecording stops only the per-turn recorder and sends the blob.
-  // The full-session recorder keeps running untouched until handleFinalization.
   const stopRecording = () => {
     const mr = turnRecorderRef.current;
     if (!mr) return;
     mr.onstop = () => {
-      const blob = new Blob(turnChunksRef.current, { type: "audio/webm" });
-      // Release the mic track so the browser stops showing the recording indicator
-      mr.stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(turnChunksRef.current, { type: mr.mimeType || "video/webm" });
+      // Release all tracks
+      webcamStreamRef.current?.getTracks().forEach((t) => t.stop());
+      webcamStreamRef.current = null;
+      if (videoPreviewRef.current) videoPreviewRef.current.srcObject = null;
       turnRecorderRef.current = null;
-      sendAudioResponse(blob);
+      sendVideoResponse(blob);
     };
     mr.stop();
     setIsRecording(false);
   };
 
-  const handleAftersave = async (sid: string) => {
-    setIsFinalizing(true);
-    try {
-      const fullAudioBlob = await stopFullSessionRecording();
-      const formData = new FormData();
-      formData.append("sessionId", sid);
-      formData.append("audio", fullAudioBlob, "session_audio.webm");
-      await axios.post(`${API_BASE}/interview/aftersave`, formData, { headers: authHeaders() });
-
-      setSessionIdSynced(null);
-      setIsFinalizing(false);
-
-      await fetchHistory();
-      await fetchProgress();
-    } catch (err) {
-      console.error("Aftersave failed", err);
-      alert("Failed to save recording. Please check your connection.");
-      setIsFinalizing(false);
-    }
-  };
-
-  const sendAudioResponse = async (blob: Blob) => {
+  const sendVideoResponse = async (blob: Blob) => {
     const currentSessionId = sessionIdRef.current;
     if (!currentSessionId) return;
     setIsLoading(true);
@@ -305,7 +283,7 @@ export default function InterviewPage() {
     formData.append("sessionId", currentSessionId);
     formData.append("file", blob, "recording.webm");
     try {
-      const res = await axios.post(`${API_BASE}/interview/respond-audio`, formData, { headers: authHeaders() });
+      const res = await axios.post(`${API_BASE}/interview/respond-video`, formData, { headers: authHeaders() });
       setUiConfigSynced(res.data.uiConfig);
       playAudio(res.data.uiConfig?.voice_script || "I understand.");
 
@@ -313,7 +291,6 @@ export default function InterviewPage() {
         setIsLoading(false);
         setIsSpeaking(false);
         setIsFinalizing(true);
-        try { await stopFullSessionRecording(); } catch {}
         await fetchHistory();
         await fetchProgress();
         setIsFinalizing(false);
@@ -321,7 +298,7 @@ export default function InterviewPage() {
         return;
       }
     } catch (err) {
-      console.error("Error sending audio", err);
+      console.error("Error sending video", err);
       setIsSpeaking(false);
     } finally {
       setIsLoading(false);
@@ -599,13 +576,13 @@ export default function InterviewPage() {
                         interview={inv}
                         onPlayAudio={(i) => {
                           setSelectedInterview(i);
-                          setShowAudioPlayer(true);
+                          setShowVideoPlayer(true);
                         }}
                         onViewAnalysis={(i) => {
                           setSelectedInterview(i);
                           setShowAnalysis(true);
                         }}
-                        onRetryFinalize={handleRetryAftersave}
+                        onRetryFinalize={handleRetryFinalize}
                       />
                     ))
                   ) : (
@@ -715,10 +692,10 @@ export default function InterviewPage() {
           />
         )}
 
-        {showAudioPlayer && selectedInterview?.dropbox_audio_url && (
+        {showVideoPlayer && selectedInterview?.dropbox_video_url && (
           <AudioPlayerModal
-            audioUrl={selectedInterview.dropbox_audio_url}
-            onClose={() => setShowAudioPlayer(false)}
+            audioUrl={selectedInterview.dropbox_video_url}
+            onClose={() => setShowVideoPlayer(false)}
           />
         )}
 
@@ -766,149 +743,103 @@ export default function InterviewPage() {
         </div>
       </header>
 
-      <main className="main-content">
-        <div
-          className={isSplit ? "layout-split" : "layout-conversational"}
-          style={isSplit ? { flex: 1, minHeight: 0 } : undefined}
-        >
-          {/* Left / conversational panel */}
-          <div
-            className={isSplit ? "left-panel glass-panel" : "glass-panel"}
-            style={{
-              ...(!isSplit ? { width: "100%", maxWidth: "800px" } : {}),
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "4rem 2rem",
-              transition: "var(--transition-smooth)",
-            }}
-          >
-            <div className="interviewer-container">
-              <div className={`avatar-pulse ${isSpeaking ? "speaking" : ""}`} />
-              <div
-                className="avatar-core"
-                style={{
-                  boxShadow: isSpeaking
-                    ? "0 0 60px var(--primary-glow)"
-                    : "0 0 40px rgba(0,0,0,0.3)",
-                }}
-              >
-                <User size={54} />
+      <main className="main-content" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <div style={{ display: "flex", flex: 1, gap: "0.75rem", minHeight: 0 }}>
+          {/* Left panel — interview + webcam */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.75rem", minHeight: 0 }}>
+            <div
+              className="glass-panel"
+              style={{
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "1.5rem 2rem",
+                flex: 1,
+              }}
+            >
+              {/* Webcam preview */}
+              <div style={{ width: "160px", height: "120px", borderRadius: "10px", overflow: "hidden", marginBottom: "0.75rem", border: "1px solid var(--border)", background: "#000" }}>
+                <video ref={videoPreviewRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
               </div>
-            </div>
 
-            <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
-              <h2 style={{ fontSize: "1.5rem", marginBottom: "0.25rem", color: "var(--foreground)" }}>
-                Sarah
-              </h2>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <span
+              <div className="interviewer-container" style={{ marginBottom: "0.5rem" }}>
+                <div className={`avatar-pulse ${isSpeaking ? "speaking" : ""}`} />
+                <div
+                  className="avatar-core"
                   style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: isSpeaking ? "var(--primary)" : "var(--accent)",
-                  }}
-                />
-                <p
-                  style={{
-                    color: "var(--foreground-muted)",
-                    fontSize: "0.9rem",
-                    fontWeight: 500,
+                    boxShadow: isSpeaking
+                      ? "0 0 60px var(--primary-glow)"
+                      : "0 0 40px rgba(0,0,0,0.3)",
                   }}
                 >
-                  {isSpeaking ? "Speaking..." : "Listening..."}
-                </p>
-              </div>
-            </div>
-
-            <div className="controls">
-              {uiConfig?.currentState === "STATE_3" ? (
-                <div style={{ textAlign: "center", animation: "fadeIn 0.5s ease-out" }}>
-                  {isFinalizing ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "1rem",
-                      }}
-                    >
-                      <Loader2 className="animate-spin" size={48} color="var(--primary)" />
-                      <p style={{ fontWeight: 600, color: "var(--foreground-muted)" }}>
-                        Finalizing Analysis...
-                      </p>
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "1.5rem",
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: "var(--accent-glow)",
-                          padding: "1rem",
-                          borderRadius: "50%",
-                        }}
-                      >
-                        <CheckCircle2 size={48} color="var(--accent)" />
-                      </div>
-                      <h3 style={{ fontSize: "1.25rem" }}>Interview Complete</h3>
-                      <button
-                        onClick={() => window.location.reload()}
-                        style={{ minWidth: "200px" }}
-                      >
-                        Return to Dashboard
-                      </button>
-                    </div>
-                  )}
+                  <User size={40} />
                 </div>
-              ) : isRecording ? (
-                <button
-                  onClick={stopRecording}
-                  className="mic-btn listening"
-                  title="Stop Recording"
-                >
-                  <MicOff size={32} />
-                </button>
-              ) : (
-                <button
-                  disabled={isSpeaking || isLoading}
-                  onClick={startRecording}
-                  className="mic-btn"
-                  title="Start Recording"
-                >
-                  {isLoading ? <Loader2 className="animate-spin" /> : <Mic size={32} />}
-                </button>
-              )}
+              </div>
+
+              <div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
+                <h2 style={{ fontSize: "1rem", marginBottom: "0", color: "var(--foreground)" }}>
+                  Sarah
+                </h2>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isSpeaking ? "var(--primary)" : "var(--accent)" }} />
+                  <p style={{ color: "var(--foreground-muted)", fontSize: "0.8rem", fontWeight: 500, margin: 0 }}>
+                    {isSpeaking ? "Speaking..." : "Listening..."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="controls">
+                {uiConfig?.currentState === "STATE_3" ? (
+                  <div style={{ textAlign: "center", animation: "fadeIn 0.5s ease-out" }}>
+                    {isFinalizing ? (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                        <Loader2 className="animate-spin" size={32} color="var(--primary)" />
+                        <p style={{ fontWeight: 600, color: "var(--foreground-muted)", fontSize: "0.9rem" }}>
+                          Finalizing Analysis...
+                        </p>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                        <CheckCircle2 size={36} color="var(--accent)" />
+                        <h3 style={{ fontSize: "1.1rem" }}>Interview Complete</h3>
+                        <button onClick={() => window.location.reload()} style={{ minWidth: "160px", fontSize: "0.85rem" }}>
+                          Return to Dashboard
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : isRecording ? (
+                  <button onClick={stopRecording} className="mic-btn listening" title="Stop Recording">
+                    <VideoOff size={28} />
+                  </button>
+                ) : (
+                  <button
+                    disabled={isSpeaking || isLoading}
+                    onClick={startRecording}
+                    className="mic-btn"
+                    title="Record Webcam"
+                  >
+                    {isLoading ? <Loader2 className="animate-spin" /> : <Video size={28} />}
+                  </button>
+                )}
+              </div>
+
+              <div style={{ width: "100%", maxWidth: "500px", marginTop: "0.75rem" }}>
+                <LiveTranscript text={isSpeaking ? lastSarahText : null} />
+              </div>
             </div>
 
-            {/* Live transcript of last Sarah utterance */}
-            <div style={{ width: "100%", maxWidth: "600px", marginTop: "2rem" }}>
-              <LiveTranscript text={isSpeaking ? lastSarahText : null} />
+            {/* Chat panel */}
+            <div className="glass-panel" style={{ padding: "0.75rem", flex: "0 0 auto", maxHeight: "180px" }}>
+              <ChatPanel sessionId={sessionId} />
             </div>
           </div>
 
-          {/* Right panel — code workspace */}
+          {/* Right panel — code workspace + whiteboard tabs */}
           {isSplit && (
-            <div
-              className="right-panel"
-              style={{ animation: "fadeInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1)" }}
-            >
-              <div className="workspace-panel">
+            <div className="right-panel" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", minHeight: 0 }}>
+              <div className="workspace-panel" style={{ flex: 1 }}>
                 <div
                   className="workspace-panel-header"
                   style={{ justifyContent: "space-between", height: "56px" }}
@@ -994,6 +925,10 @@ export default function InterviewPage() {
                     onChange={onCodeChange}
                   />
                 </div>
+              </div>
+              {/* Whiteboard */}
+              <div className="glass-panel" style={{ padding: "0.5rem", flex: "0 0 auto", maxHeight: "250px" }}>
+                <Whiteboard visible={true} />
               </div>
             </div>
           )}

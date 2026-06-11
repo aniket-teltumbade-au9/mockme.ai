@@ -30,7 +30,7 @@ class Session(BaseModel):
     
     # Finalization fields
     finalized: bool = False
-    dropbox_audio_url: Optional[str] = None
+    dropbox_video_url: Optional[str] = None
     dropbox_analysis_url: Optional[str] = None
     recording_available: bool = False
     finalization_attempted_at: Optional[datetime] = None

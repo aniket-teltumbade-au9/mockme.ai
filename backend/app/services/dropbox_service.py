@@ -38,15 +38,15 @@ class DropboxService:
         self,
         session_id: str,
         date_str: str,
-        audio_bytes: bytes,
+        content_bytes: bytes,
         analysis_data: dict,
     ) -> tuple[str, str]:
         base_path = f"/MockMe.AI/interviews/{date_str}_{session_id}"
 
-        audio_path = f"{base_path}/audio.webm"
+        video_path = f"{base_path}/interview.mp4"
         self.dbx.files_upload(
-            audio_bytes,
-            audio_path,
+            content_bytes,
+            video_path,
             mode=dropbox.files.WriteMode.overwrite,
         )
 
@@ -58,7 +58,7 @@ class DropboxService:
             mode=dropbox.files.WriteMode.overwrite,
         )
 
-        audio_link = self._get_or_create_shared_link(audio_path)
+        video_link = self._get_or_create_shared_link(video_path)
         json_link = self._get_or_create_shared_link(json_path)
 
-        return audio_link, json_link
+        return video_link, json_link

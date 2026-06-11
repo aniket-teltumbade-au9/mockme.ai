@@ -28,6 +28,18 @@ def get_mixed_path(session_id: str) -> str:
     """Path to the final mixed audio (mic + TTS combined)."""
     return os.path.join(get_storage_dir(), f"{session_id}_mixed.mp3")
 
+def get_user_video_path(session_id: str, turn_index: int) -> str:
+    """Path to a user webcam video turn recording."""
+    return os.path.join(get_storage_dir(), f"{session_id}_user_{turn_index}.webm")
+
+def get_avatar_video_path(session_id: str, turn_index: int) -> str:
+    """Path to an avatar video segment (Sarah's response)."""
+    return os.path.join(get_storage_dir(), f"{session_id}_avatar_{turn_index}.mp4")
+
+def get_final_video_path(session_id: str) -> str:
+    """Path to the final combined interview video."""
+    return os.path.join(get_storage_dir(), f"{session_id}_final.mp4")
+
 def concatenate_turn_audio(session_id: str) -> str:
     """Concatenate all turn audio files into one mic mp3 using ffmpeg.
     Scans the storage dir by glob to find all turn files (handles gaps from code-only turns).
@@ -111,6 +123,80 @@ def concatenate_turn_audio(session_id: str) -> str:
             pass
 
     return output_path
+
+
+def build_final_interview_video(session_id: str, tts_clips: list, output_path: str) -> str:
+    """Build final interview video by concatenating ALL clips in chronological order:
+    avatar_0.mp4 (greeting) → user_1.webm → avatar_1.mp4 → user_2.webm → avatar_2.mp4 → ...
+    Handles gaps from code-only turns (respond-code produces no user file).
+    Uses ffmpeg concat FILTER which works on decoded frames (handles mixed webm/mp4 inputs).
+    Returns output_path on success, empty string on failure."""
+    storage_dir = get_storage_dir()
+
+    # --- Collect files in chronological order ---
+
+    # 1. Greeting is always avatar_0
+    ordered = []
+    greeting_path = get_avatar_video_path(session_id, 0)
+    if os.path.exists(greeting_path):
+        ordered.append(greeting_path)
+
+    # 2. Determine max index from tts_clips paths
+    max_idx = 0
+    for clip in tts_clips:
+        path = clip.get('path', '')
+        m = re.search(r'_sarah_(\d+)\.mp3$', path)
+        if m:
+            idx = int(m.group(1))
+            if idx > max_idx:
+                max_idx = idx
+
+    # 3. For each idx from 1..max: add user_video (if exists), then avatar (if exists)
+    for idx in range(1, max_idx + 1):
+        user_path = get_user_video_path(session_id, idx)
+        if os.path.exists(user_path):
+            ordered.append(user_path)
+        avatar_path = get_avatar_video_path(session_id, idx)
+        if os.path.exists(avatar_path):
+            ordered.append(avatar_path)
+
+    if not ordered:
+        print(f"WARN: No video files found to build final interview for {session_id}")
+        return ""
+
+    print(f"DEBUG: Building final interview video from {len(ordered)} files in order:")
+    for i, p in enumerate(ordered):
+        fname = os.path.basename(p)
+        sz = os.path.getsize(p) if os.path.exists(p) else 0
+        print(f"DEBUG:   [{i}] {fname} ({sz} bytes)")
+
+    # --- Concat all files using ffmpeg concat FILTER ---
+    cmd = ["ffmpeg", "-y"]
+    for f in ordered:
+        cmd += ["-i", f]
+    n = len(ordered)
+    filter_inputs_v = "".join(f"[{i}:v]" for i in range(n))
+    filter_inputs_a = "".join(f"[{i}:a]" for i in range(n))
+    filter_str = f"{filter_inputs_v}{filter_inputs_a}concat=n={n}:v=1:a=1[outv][outa]"
+    cmd += [
+        "-filter_complex", filter_str,
+        "-map", "[outv]", "-map", "[outa]",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "64k",
+        output_path,
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    if result.returncode != 0:
+        print(f"FFMPEG concat error building final video: {result.stderr[:500]}")
+        return ""
+
+    if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+        print(f"DEBUG: Final interview video built -> {output_path} ({os.path.getsize(output_path)} bytes)")
+        return output_path
+
+    print(f"ERROR: Final interview video not created at {output_path}")
+    return ""
 
 
 def build_final_interview_audio(session_id: str, tts_clips: list, output_path: str) -> str:

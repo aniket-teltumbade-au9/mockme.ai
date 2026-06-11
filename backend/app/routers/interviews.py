@@ -4,14 +4,14 @@ from app.services.database import get_session, get_user, update_session, db
 from app.services.auth import get_current_user
 from app.services.dropbox_service import DropboxService
 from app.services.analysis_builder import build_groq_session_analysis
-from app.services.storage import get_storage_dir, get_mic_path, get_mixed_path, build_final_interview_audio
+from app.services.storage import get_storage_dir, get_final_video_path, build_final_interview_video
 import os
 
 router = APIRouter(prefix="/api/interviews", tags=["interviews"])
 
 # ... (rest of router functions)
 
-async def finalize_interview_task(session_id: str, mic_path_override: str | None = None):
+async def finalize_interview_task(session_id: str):
     print(f"\n=== FINALIZE TASK START session={session_id} ===")
     session = await get_session(session_id)
     if not session:
@@ -33,66 +33,22 @@ async def finalize_interview_task(session_id: str, mic_path_override: str | None
     except Exception as e:
         print(f"DEBUG: Could not list storage dir: {e}")
 
-    # Determine mic path: use override if provided, else fall back to DB
-    mic_path = mic_path_override or session.get("raw_mic_path")
-    if mic_path and not os.path.exists(mic_path):
-        print(f"WARN: mic_path from DB/override doesn't exist: {mic_path}")
-        mic_path = None
+    final_video_path = None
 
-    # If no mic path, try to build it from turn files on-the-fly
-    if not mic_path:
-        print(f"DEBUG: No mic_path found. Attempting to build from turn files...")
-        try:
-            from app.services.storage import concatenate_turn_audio
-            # Count how many turn files exist
-            turn_count = 0
-            while True:
-                tp = os.path.join(storage_dir, f"{session_id}_turn_{turn_count}.webm")
-                if os.path.exists(tp):
-                    turn_count += 1
-                else:
-                    break
-            if turn_count > 0:
-                mic_path = concatenate_turn_audio(session_id)
-                if mic_path and os.path.exists(mic_path):
-                    print(f"DEBUG: Built mic from {turn_count} turn files -> {mic_path}")
-                    # Persist so future retries find it
-                    await update_session(session_id, {"raw_mic_path": mic_path})
-                else:
-                    mic_path = None
-            else:
-                print(f"WARN: No turn files found to build mic")
-        except Exception as e:
-            print(f"ERROR building mic from turns: {e}")
-            mic_path = None
-
-    has_mic = mic_path and os.path.exists(mic_path)
-    print(f"DEBUG: Final mic_path={mic_path} exists={has_mic}")
-    if has_mic:
-        print(f"DEBUG: mic file size={os.path.getsize(mic_path)} bytes")
-
-    mixed_path = None
-
-    # Build final interview audio by concatenating all clips in chronological order
-    # (sarah_0 → turn_1 → sarah_1 → turn_2 → sarah_2 → ...)
-    # This replaces the broken overlay-based mix that created overlapping chaos.
+    # Build final interview video by concatenating all clips in chronological order
+    # avatar_0.mp4 → user_1.webm → avatar_1.mp4 → user_2.webm → avatar_2.mp4 → ...
     try:
-        mixed_path = get_mixed_path(session_id)
-        print(f"DEBUG: Building final interview audio chronologically -> {mixed_path}")
-        built = build_final_interview_audio(session_id, tts_clips, mixed_path)
+        final_video_path = get_final_video_path(session_id)
+        print(f"DEBUG: Building final interview video -> {final_video_path}")
+        built = build_final_interview_video(session_id, tts_clips, final_video_path)
         if built:
-            print(f"DEBUG: Final interview audio built -> {built}")
+            print(f"DEBUG: Final interview video built -> {built}")
         else:
-            print(f"WARN: Could not build final interview audio (no clips?)")
-            mixed_path = None
+            print(f"WARN: Could not build final interview video")
+            final_video_path = None
     except Exception as e:
-        print(f"FINAL AUDIO BUILD ERROR: {e}")
-        mixed_path = None
-
-    # Fallback to combined mic if final audio couldn't be built
-    if not mixed_path and has_mic:
-        mixed_path = mic_path
-        print(f"DEBUG: Falling back to combined mic -> {mixed_path}")
+        print(f"FINAL VIDEO BUILD ERROR: {e}")
+        final_video_path = None
 
     # Build Analysis via Groq
     print(f"DEBUG: Building analysis via Groq...")
@@ -107,18 +63,18 @@ async def finalize_interview_task(session_id: str, mic_path_override: str | None
 
     # Upload to Dropbox if connected
     if user.get("dropbox_refresh_token"):
-        print(f"DEBUG: Dropbox connected - uploading...")
+        print(f"DEBUG: Dropbox connected - uploading video...")
         try:
             service = DropboxService(user["dropbox_refresh_token"])
-            audio_url = None
+            video_url = None
             json_url = None
-            upload_audio_path = mixed_path if (mixed_path and os.path.exists(mixed_path)) else mic_path
-            if upload_audio_path and os.path.exists(upload_audio_path):
-                with open(upload_audio_path, "rb") as f:
-                    mixed_bytes = f.read()
-                print(f"DEBUG: Uploading {len(mixed_bytes)} bytes to Dropbox...")
-                audio_url, json_url = service.upload_interview(session_id, date_str, mixed_bytes, analysis_payload)
-                print(f"DEBUG: Dropbox upload complete. audio_url={audio_url}")
+            upload_path = final_video_path if (final_video_path and os.path.exists(final_video_path)) else None
+            if upload_path and os.path.exists(upload_path):
+                with open(upload_path, "rb") as f:
+                    video_bytes = f.read()
+                print(f"DEBUG: Uploading {len(video_bytes)} bytes to Dropbox...")
+                video_url, json_url = service.upload_interview(session_id, date_str, video_bytes, analysis_payload)
+                print(f"DEBUG: Dropbox upload complete. video_url={video_url}")
 
             update_payload = {
                 "finalized": True,
@@ -126,8 +82,8 @@ async def finalize_interview_task(session_id: str, mic_path_override: str | None
                 "finalization_attempted_at": datetime.now(timezone.utc),
                 "finalization_error": None
             }
-            if audio_url:
-                update_payload["dropbox_audio_url"] = audio_url
+            if video_url:
+                update_payload["dropbox_video_url"] = video_url
             if json_url:
                 update_payload["dropbox_analysis_url"] = json_url
             await update_session(session_id, update_payload)
@@ -193,7 +149,7 @@ async def finalize_interview(
         "finalization_error": None
     })
 
-    background_tasks.add_task(finalize_interview_task, session_id, mic_path)
+    background_tasks.add_task(finalize_interview_task, session_id)
     return {"success": True, "message": "Finalization started in background"}
 
 @router.post("/{session_id}/refinalize")
@@ -201,7 +157,6 @@ async def refinalize_interview(
     session_id: str,
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
-    audio: UploadFile = File(None),
 ):
     session = await get_session(session_id)
     if not session:
@@ -209,31 +164,8 @@ async def refinalize_interview(
     if session.get("user_id") != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Session does not belong to authenticated user")
 
-    mic_path = None
-    if audio:
-        audio_bytes = await audio.read()
-        audio_size = len(audio_bytes)
-        print(f"DEBUG: refinalize received {audio_size} bytes for session {session_id}")
-        if audio_size > 0:
-            mic_path = get_mic_path(session_id)
-            with open(mic_path, "wb") as f:
-                f.write(audio_bytes)
-            print(f"DEBUG: Saved re-uploaded mic to {mic_path} ({audio_size} bytes)")
-    else:
-        # No audio uploaded — rebuild combined mic from turn files
-        print(f"DEBUG: refinalize rebuilding mic from turn files for session {session_id}")
-        try:
-            from app.services.storage import concatenate_turn_audio
-            built = concatenate_turn_audio(session_id)
-            if built and os.path.exists(built):
-                mic_path = built
-                print(f"DEBUG: Rebuilt mic from turns -> {mic_path} ({os.path.getsize(mic_path)} bytes)")
-        except Exception as e:
-            print(f"ERROR rebuilding mic on refinalize: {e}")
-
     await update_session(session_id, {
-        "raw_mic_path": mic_path,
-        "finalization_error": None if mic_path else "No mic audio available",
+        "finalization_error": None,
     })
-    background_tasks.add_task(finalize_interview_task, session_id, mic_path)
+    background_tasks.add_task(finalize_interview_task, session_id)
     return {"success": True, "message": "Re-finalization started"}
