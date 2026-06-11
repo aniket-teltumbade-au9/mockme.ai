@@ -38,24 +38,19 @@ export const LiveTranscript: React.FC<LiveTranscriptProps> = ({ text }) => {
 // ── Voice / Accent Selector ──────────────────────────────────────────────────
 
 export interface TTSVoice {
-  label: string;
-  lang: string;   // sent to backend /api/tts?lang=
+  name: string;
+  lang_code: string;
   flag: string;
+  accent?: string;
 }
 
-export const TTS_VOICES: TTSVoice[] = [
-  { label: "English (US)",       lang: "en",    flag: "🇺🇸" },
-  { label: "English (India)",    lang: "en-in", flag: "🇮🇳" },
-  { label: "English (UK)",       lang: "en-gb", flag: "🇬🇧" },
-  { label: "English (Australia)",lang: "en-au", flag: "🇦🇺" },
-];
-
 interface VoiceSelectorProps {
+  voices: TTSVoice[];
   selectedVoice: TTSVoice;
   onSelect: (voice: TTSVoice) => void;
 }
 
-export const VoiceSelector: React.FC<VoiceSelectorProps> = ({ selectedVoice, onSelect }) => {
+export const VoiceSelector: React.FC<VoiceSelectorProps> = ({ voices, selectedVoice, onSelect }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -67,7 +62,7 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({ selectedVoice, onS
       >
         <span>{selectedVoice.flag}</span>
         <span style={{ maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {selectedVoice.label}
+          {selectedVoice.name}
         </span>
         <ChevronDown size={12} />
       </button>
@@ -80,20 +75,20 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({ selectedVoice, onS
           zIndex: 50, boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
           overflow: "hidden",
         }}>
-          {TTS_VOICES.map((v) => (
+          {voices.map((v) => (
             <button
-              key={v.lang}
+              key={v.lang_code}
               onClick={() => { onSelect(v); setOpen(false); }}
               style={{
                 display: "flex", alignItems: "center", gap: "0.6rem",
                 width: "100%", textAlign: "left",
-                background: selectedVoice.lang === v.lang ? "rgba(99,102,241,0.15)" : "transparent",
+                background: selectedVoice.lang_code === v.lang_code ? "rgba(99,102,241,0.15)" : "transparent",
                 border: "none", padding: "0.55rem 0.75rem", fontSize: "0.8rem",
                 color: "#cbd5e1", cursor: "pointer",
               }}
             >
               <span style={{ fontSize: "1rem" }}>{v.flag}</span>
-              <span style={{ fontWeight: selectedVoice.lang === v.lang ? 600 : 400 }}>{v.label}</span>
+              <span style={{ fontWeight: selectedVoice.lang_code === v.lang_code ? 600 : 400 }}>{v.name}</span>
             </button>
           ))}
         </div>

@@ -26,7 +26,19 @@ async def test_db_connection():
         await client.admin.command('ping')
         print("MongoDB connection successful")
     except Exception as e:
-        print(f"MongoDB connection failed: {e}")
+        err_str = str(e)
+        print(f"MongoDB connection failed: {err_str}")
+        if "TLSV1_ALERT_INTERNAL_ERROR" in err_str or "SSL handshake failed" in err_str:
+            print("")
+            print("=" * 70)
+            print("MongoDB Atlas SSL Error Detected")
+            print("=" * 70)
+            print("This usually means your IP is not whitelisted in MongoDB Atlas.")
+            print("")
+            print("Fix: Go to https://cloud.mongodb.com -> Network Access")
+            print("     -> Add IP Address -> Add Current IP (or 0.0.0.0/0 for dev)")
+            print("=" * 70)
+            print("")
 
 async def get_user(user_id: str):
     user = await db.users.find_one({"user_id": user_id})
@@ -41,7 +53,8 @@ async def get_user(user_id: str):
 async def update_user_dropbox(user_id: str, dropbox_data: dict):
     await db.users.update_one(
         {"user_id": user_id},
-        {"$set": dropbox_data}
+        {"$set": dropbox_data, "$setOnInsert": {"user_id": user_id}},
+        upsert=True,
     )
 
 async def get_session(session_id: str):
@@ -53,23 +66,31 @@ async def update_session(session_id: str, update_data: dict):
         {"$set": update_data}
     )
 
-async def get_user_progress():
-    progress = await db.progress.find_one({"user_id": "default_user"})
+async def get_user_interviews(user_id: str):
+    cursor = db.interviews.find({"user_id": user_id}).sort("created_at", -1).limit(20)
+    interviews = []
+    async for interview in cursor:
+        interview["_id"] = str(interview["_id"])
+        interviews.append(interview)
+    return interviews
+
+async def get_user_progress(user_id: str):
+    progress = await db.progress.find_one({"user_id": user_id})
     if not progress:
-        new_progress: dict = {"user_id": "default_user", "total_interviews": 0, "skill_gaps": [], "history": []}
+        new_progress: dict = {"user_id": user_id, "total_interviews": 0, "skill_gaps": [], "history": []}
         await db.progress.insert_one(new_progress)
         new_progress["_id"] = str(new_progress["_id"])
         return new_progress
     progress["_id"] = str(progress["_id"])
     return progress
 
-async def can_start_interview() -> bool:
+async def can_start_interview(user_id: str) -> bool:
     # Set DISABLE_RATE_LIMIT=true in .env to bypass the daily limit during development
     if os.getenv("DISABLE_RATE_LIMIT", "").lower() in ("1", "true", "yes"):
         return True
     today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     existing = await db.interviews.find_one({
-        "user_id": "default_user",
+        "user_id": user_id,
         "created_at": {"$gte": today}
     })
     return existing is None
@@ -78,13 +99,13 @@ async def save_interview_session(session_data):
     session_data["created_at"] = datetime.now(timezone.utc)
     await db.interviews.insert_one(session_data)
 
-async def update_progress(session_id, gaps, feedback):
+async def update_progress(user_id: str, session_id: str, gaps: list, feedback: str):
     # Fetch existing gaps and merge — avoids wiping gaps from prior sessions
-    existing = await db.progress.find_one({"user_id": "default_user"})
+    existing = await db.progress.find_one({"user_id": user_id})
     existing_gaps: list = existing.get("skill_gaps", []) if existing else []
     merged_gaps = list(set(existing_gaps + gaps))
     await db.progress.update_one(
-        {"user_id": "default_user"},
+        {"user_id": user_id},
         {
             "$inc": {"total_interviews": 1},
             "$push": {"history": {"session_id": session_id, "date": datetime.now(timezone.utc), "feedback": feedback}},

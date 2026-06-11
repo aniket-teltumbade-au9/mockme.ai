@@ -9,7 +9,7 @@ SUPPORTED_LANGS = {
     "en-au": "en-AU", # Australian English
 }
 
-def get_audio_bytes(text: str, lang: str = "en") -> bytes:
+def get_audio_bytes(text: str, lang: str = "en-in") -> bytes:
     if not text or not text.strip():
         return b""
 

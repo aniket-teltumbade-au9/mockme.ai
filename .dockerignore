@@ -1,0 +1,39 @@
+# ── Python ────────────────────────────────────────────
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.venv
+**/venv
+**/env
+backend/.env
+backend/tts_clips/
+
+# ── Node / Next.js ────────────────────────────────────
+**/node_modules
+frontend/.next
+frontend/out
+frontend/.env
+frontend/.env.local
+
+# ── Git & editor ──────────────────────────────────────
+.git
+.gitignore
+.github
+.vscode
+.idea
+**/.DS_Store
+**/Thumbs.db
+
+# ── Docker files themselves ────────────────────────────
+*.Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# ── Docs / misc ───────────────────────────────────────
+README.md
+CHANGELOG.md
+*.log

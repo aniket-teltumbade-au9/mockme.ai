@@ -1,8 +1,9 @@
 import subprocess
 import tempfile
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/api/code", tags=["code_runner"])
 
@@ -24,7 +25,7 @@ class RunCodeRequest(BaseModel):
 
 
 @router.post("/run")
-async def run_code(request: RunCodeRequest):
+async def run_code(request: RunCodeRequest, current_user: dict = Depends(get_current_user)):
     lang = request.language.lower()
     config = LANGUAGE_CONFIG.get(lang)
 

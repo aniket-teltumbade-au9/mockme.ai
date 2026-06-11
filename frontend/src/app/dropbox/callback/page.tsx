@@ -3,9 +3,11 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { API_BASE, DEFAULT_USER_ID } from "@/utils/apiConfig";
+import { API_BASE } from "@/utils/apiConfig";
+import { useAuth } from "@/context/AuthContext";
 
 function DropboxCallbackContent() {
+  const { setDropboxAuth } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -17,16 +19,21 @@ function DropboxCallbackContent() {
     const codeVerifier = localStorage.getItem('dropbox_code_verifier');
 
     if (!code || !codeVerifier || !state) {
-      setStatus('error');
-      setErrorMsg('Authorization code, state, or verifier missing.');
+      queueMicrotask(() => {
+        setStatus('error');
+        setErrorMsg('Authorization code, state, or verifier missing.');
+      });
       return;
     }
 
     const completeAuth = async () => {
       try {
-        await axios.get(`${API_BASE}/dropbox/callback`, {
-          params: { code, code_verifier: codeVerifier, state, user_id: DEFAULT_USER_ID }
+        const res = await axios.get(`${API_BASE}/dropbox/callback`, {
+          params: { code, code_verifier: codeVerifier, state }
         });
+
+        setDropboxAuth(res.data.user_id, res.data.access_token);
+
         setStatus('success');
         localStorage.removeItem('dropbox_code_verifier');
         setTimeout(() => router.push('/'), 2000);
@@ -38,8 +45,8 @@ function DropboxCallbackContent() {
     };
 
     completeAuth();
-  }, [searchParams, router]);
-
+  }, [searchParams, router, setDropboxAuth]);
+// ...
   return (
     <div className="container layout-conversational">
       <div className="glass-panel text-center" style={{ maxWidth: '400px' }}>

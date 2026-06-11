@@ -4,7 +4,7 @@ import Editor from "@monaco-editor/react";
 import axios from "axios";
 import { Terminal, TerminalLine } from "./Terminal";
 
-import { API_BASE } from "@/utils/apiConfig";
+import { API_BASE, authHeaders } from "@/utils/apiConfig";
 
 interface CodeEditorProps {
   code: string;
@@ -38,6 +38,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       const res = await axios.post(`${API_BASE}/code/run`, {
         code: codeRef.current,
         language,
+      }, {
+        headers: authHeaders(),
       });
 
       const next: TerminalLine[] = [];
