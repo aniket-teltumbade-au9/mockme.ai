@@ -22,17 +22,16 @@ export const Terminal: React.FC<TerminalProps> = ({
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom whenever output changes
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [lines]);
 
   const colorFor = (type: TerminalLine["type"]) => {
     switch (type) {
-      case "stderr":  return "#f87171"; // red-400
-      case "stdout":  return "#e2e8f0"; // slate-200
-      case "input":   return "#818cf8"; // indigo-400
-      case "system":  return "#64748b"; // slate-500
+      case "stderr":  return "#f87171";
+      case "stdout":  return "#e2e8f0";
+      case "input":   return "#818cf8";
+      case "system":  return "#64748b";
     }
   };
 
@@ -43,7 +42,7 @@ export const Terminal: React.FC<TerminalProps> = ({
         flexDirection: "column",
         height: "100%",
         background: "#0d1117",
-        borderRadius: "0 0 20px 20px",
+        borderRadius: "0 0 12px 12px",
         overflow: "hidden",
       }}
     >
@@ -53,17 +52,18 @@ export const Terminal: React.FC<TerminalProps> = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0.5rem 1rem",
+          padding: "0.5rem 0.75rem",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           flexShrink: 0,
           background: "#161b22",
+          flexWrap: 'wrap',
+          gap: '0.5rem'
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {/* traffic-light dots */}
-          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
-          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
           <span style={{ fontSize: "0.7rem", color: "#64748b", marginLeft: "0.5rem" }}>
             Terminal — {language}
           </span>
@@ -75,13 +75,14 @@ export const Terminal: React.FC<TerminalProps> = ({
             display: "flex",
             alignItems: "center",
             gap: "0.4rem",
-            padding: "0.3rem 0.8rem",
+            padding: "0.25rem 0.6rem",
             fontSize: "0.75rem",
             borderRadius: "6px",
             background: isRunning ? "#1e293b" : "#10b981",
             color: "white",
             border: "none",
             cursor: isRunning ? "not-allowed" : "pointer",
+            minHeight: '32px'
           }}
         >
           {isRunning ? (
@@ -97,10 +98,11 @@ export const Terminal: React.FC<TerminalProps> = ({
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "0.75rem 1rem",
+          padding: "0.75rem",
           fontFamily: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
-          fontSize: "0.8rem",
-          lineHeight: 1.6,
+          fontSize: "0.75rem",
+          lineHeight: 1.5,
+          minWidth: 0
         }}
       >
         {lines.length === 0 && (
@@ -109,7 +111,12 @@ export const Terminal: React.FC<TerminalProps> = ({
           </span>
         )}
         {lines.map((line, i) => (
-          <div key={i} style={{ color: colorFor(line.type), whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+          <div key={i} style={{ 
+            color: colorFor(line.type), 
+            whiteSpace: "pre-wrap", 
+            wordBreak: "break-all",
+            overflowWrap: 'break-word'
+          }}>
             {line.type === "input" && <span style={{ color: "#475569" }}>$ </span>}
             {line.text}
           </div>

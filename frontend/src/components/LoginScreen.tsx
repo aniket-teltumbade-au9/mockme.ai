@@ -23,7 +23,7 @@ export const LoginScreen = () => {
   };
 
   return (
-    <div className="container layout-conversational" style={{ background: 'var(--background)', minHeight: '100vh' }}>
+    <div className="container layout-conversational" style={{ background: 'var(--background)', minHeight: '100vh', width: '100%' }}>
       <div 
         className="glass-panel text-center" 
         style={{ 
@@ -33,8 +33,9 @@ export const LoginScreen = () => {
           flexDirection: 'column',
           alignItems: 'center',
           gap: '1.5rem',
-          padding: '3.5rem 2.5rem',
-          boxShadow: '0 40px 100px -20px rgba(0,0,0,0.8), 0 0 80px -10px var(--primary-glow)'
+          padding: '2.5rem',
+          boxShadow: '0 40px 100px -20px rgba(0,0,0,0.8), 0 0 80px -10px var(--primary-glow)',
+          margin: '0 auto',
         }}
       >
         <div style={{ 
@@ -53,16 +54,23 @@ export const LoginScreen = () => {
 
         <div>
             <h1 style={{ 
-              fontSize: '2.25rem', 
+              fontSize: '2rem', 
               marginBottom: '0.75rem',
               background: 'linear-gradient(to right, #fff, #94a3b8)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              fontWeight: 900
+              fontWeight: 900,
+              lineHeight: 1.2
             }}>
                 MockMe.AI
             </h1>
-            <p style={{ color: 'var(--foreground-muted)', fontSize: '1rem', maxWidth: '300px', margin: '0 auto' }}>
+            <p style={{ 
+              color: 'var(--foreground-muted)', 
+              fontSize: '0.95rem', 
+              maxWidth: '300px', 
+              margin: '0 auto',
+              lineHeight: 1.5
+            }}>
                 Master your next technical interview with AI-powered simulations.
             </p>
         </div>
@@ -75,9 +83,13 @@ export const LoginScreen = () => {
           style={{ 
             width: '100%',
             height: '56px',
-            fontSize: '1.05rem',
+            fontSize: '1rem',
             borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 10px 20px -5px var(--primary-glow)'
+            boxShadow: '0 10px 20px -5px var(--primary-glow)',
+            minHeight: '44px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
         >
           {isLoading ? (
@@ -85,14 +97,14 @@ export const LoginScreen = () => {
           ) : (
             <>
               <LogIn size={20} />
-              Continue with Dropbox
+              <span style={{ marginLeft: '0.5rem' }}>Continue with Dropbox</span>
             </>
           )}
         </button>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--foreground-muted)', fontSize: '0.8rem' }}>
             <ShieldCheck size={14} color="var(--accent)" />
-            Secure authentication via Dropbox OAuth
+            <span>Secure authentication via Dropbox OAuth</span>
         </div>
       </div>
     </div>

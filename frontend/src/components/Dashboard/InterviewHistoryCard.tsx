@@ -52,7 +52,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
     <div 
       className="glass-panel" 
       style={{ 
-        padding: '1.25rem', 
+        padding: '1rem', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between', 
@@ -60,43 +60,53 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
         borderRadius: 'var(--radius-lg)',
         border: '1px solid var(--border)',
         cursor: 'default',
-        opacity: isPending ? 0.8 : 1
+        opacity: isPending ? 0.8 : 1,
+        flexDirection: 'column',
+        gap: '1rem'
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', width: '100%' }}>
         <div style={{ 
           background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)', 
-          padding: '0.85rem', 
+          padding: '0.75rem', 
           borderRadius: 'var(--radius-md)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          border: '1px solid rgba(99, 102, 241, 0.1)'
+          border: '1px solid rgba(99, 102, 241, 0.1)',
+          flexShrink: 0
         }}>
-          <Calendar size={20} color="var(--primary)" />
+          <Calendar size={18} color="var(--primary)" />
         </div>
         
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--foreground)' }}>{date}</h4>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+            <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--foreground)' }}>{date}</h4>
             <span style={{ color: 'var(--border-bright)', fontSize: '0.8rem' }}>•</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--foreground-muted)', fontSize: '0.85rem' }}>
-              <Clock size={14} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--foreground-muted)', fontSize: '0.8rem' }}>
+              <Clock size={12} />
               {time}
             </div>
           </div>
-          <p style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', fontFamily: 'var(--font-geist-mono)' }}>
+          <p style={{ 
+            fontSize: '0.7rem', 
+            color: 'var(--foreground-muted)', 
+            fontFamily: 'var(--font-geist-mono)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
             ID: {interview.sessionId.substring(0, 8)}
           </p>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
           gap: '0.5rem', 
-          padding: '0.4rem 0.8rem', 
+          padding: '0.3rem 0.7rem', 
           background: verdictStyles.bg, 
           borderRadius: '20px',
           border: `1px solid ${verdictStyles.bg}`
@@ -107,7 +117,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: verdictStyles.dot }} />
           )}
           <span style={{ 
-            fontSize: '0.75rem', 
+            fontSize: '0.7rem', 
             fontWeight: 700, 
             color: verdictStyles.text,
             textTransform: 'uppercase',
@@ -117,7 +127,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
           </span>
         </div>
         
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             {interview.dropbox_audio_url && isFinished && (
                 <button 
                   onClick={() => onPlayAudio(interview)} 
@@ -126,7 +136,8 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
                     padding: '0.5rem', 
                     borderRadius: 'var(--radius-sm)',
                     width: '36px',
-                    height: '36px'
+                    height: '36px',
+                    minHeight: '36px'
                   }}
                   title="Play Recording"
                 >
@@ -140,14 +151,25 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
                   style={{ 
                     padding: '0.5rem 1.25rem', 
                     fontSize: '0.85rem',
-                    borderRadius: 'var(--radius-sm)'
+                    borderRadius: 'var(--radius-sm)',
+                    minHeight: '36px'
                   }}
                 >
-                    Analysis
+                    <span>Analysis</span>
                     <ChevronRight size={16} />
                 </button>
             ) : (
-                <div style={{ width: '100px', textAlign: 'center', color: 'var(--foreground-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                <div style={{ 
+                  width: '100px', 
+                  textAlign: 'center', 
+                  color: 'var(--foreground-muted)', 
+                  fontSize: '0.75rem', 
+                  fontStyle: 'italic',
+                  minHeight: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
                     {isPending ? 'Syncing...' : 'Incomplete'}
                 </div>
             )}
@@ -161,7 +183,8 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
                     fontSize: '0.8rem',
                     borderRadius: 'var(--radius-sm)',
                     borderColor: 'var(--primary)',
-                    color: 'var(--primary)'
+                    color: 'var(--primary)',
+                    minHeight: '36px'
                   }}
                 >
                     Retry

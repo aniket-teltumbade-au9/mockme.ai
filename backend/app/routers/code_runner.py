@@ -16,7 +16,8 @@ LANGUAGE_CONFIG: dict[str, dict] = {
     "cpp":        {"ext": "cpp", "cmd": None},   # handled specially
 }
 
-TIMEOUT_SECONDS = 10
+# No time limit for coding round - candidate can take as much time as needed
+TIMEOUT_SECONDS = None  # Disabled - no restriction
 
 
 class RunCodeRequest(BaseModel):
@@ -44,7 +45,7 @@ async def run_code(request: RunCodeRequest, current_user: dict = Depends(get_cur
                 # Compile first
                 compile_result = subprocess.run(
                     ["javac", file_path],
-                    capture_output=True, text=True, timeout=TIMEOUT_SECONDS, cwd=tmpdir
+                    capture_output=True, text=True, timeout=60, cwd=tmpdir
                 )
                 if compile_result.returncode != 0:
                     return {"stdout": "", "stderr": compile_result.stderr, "exit_code": compile_result.returncode}
@@ -54,7 +55,7 @@ async def run_code(request: RunCodeRequest, current_user: dict = Depends(get_cur
                 out_path = os.path.join(tmpdir, "solution")
                 compile_result = subprocess.run(
                     ["g++", file_path, "-o", out_path],
-                    capture_output=True, text=True, timeout=TIMEOUT_SECONDS
+                    capture_output=True, text=True, timeout=60
                 )
                 if compile_result.returncode != 0:
                     return {"stdout": "", "stderr": compile_result.stderr, "exit_code": compile_result.returncode}
@@ -63,10 +64,11 @@ async def run_code(request: RunCodeRequest, current_user: dict = Depends(get_cur
             else:
                 cmd = config["cmd"] + [file_path]
 
+            # Run with no timeout (TIMEOUT_SECONDS is None)
             result = subprocess.run(
                 cmd,
                 capture_output=True, text=True,
-                timeout=TIMEOUT_SECONDS,
+                timeout=None,  # No time limit
                 cwd=tmpdir
             )
 
@@ -77,7 +79,7 @@ async def run_code(request: RunCodeRequest, current_user: dict = Depends(get_cur
             }
 
     except subprocess.TimeoutExpired:
-        return {"stdout": "", "stderr": f"Execution timed out after {TIMEOUT_SECONDS}s", "exit_code": 124}
+        return {"stdout": "", "stderr": "Execution timed out", "exit_code": 124}
     except FileNotFoundError as e:
         return {"stdout": "", "stderr": f"Runtime not found: {e}", "exit_code": 127}
     except Exception as e:

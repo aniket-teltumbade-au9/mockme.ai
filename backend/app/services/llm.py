@@ -1,10 +1,42 @@
 import os
+import random
 from groq import Groq
 from dotenv import load_dotenv
+from app.services.coding_problems import CODING_PROBLEMS, get_problem_by_id
 
 load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+def get_random_coding_problem(user_performance: str = None, seniority: str = None, jd_level: str = None) -> dict:
+    """
+    Select a random coding problem based on priority criteria.
+    
+    Args:
+        user_performance: "high", "mid", or "low"
+        seniority: candidate level
+        jd_level: job description difficulty level
+    
+    Returns:
+        A coding problem dict
+    """
+    # Map performance to priority
+    priority_map = {
+        "high": "high",
+        "mid": "medium",
+        "low": "low"
+    }
+    
+    # Determine priority based on user performance
+    priority = priority_map.get(user_performance, "high")
+    
+    # Filter problems by priority
+    filtered = [p for p in CODING_PROBLEMS if p["priority"] == priority]
+    
+    if not filtered:
+        filtered = CODING_PROBLEMS
+    
+    return random.choice(filtered)
 
 SYSTEM_PROMPT = """
 You are Sarah, a conversational, engaging, yet rigorous Senior Engineering Manager conducting a 10-15 MINUTE interview based on the following Job Description (JD):
@@ -24,7 +56,6 @@ INTERVIEW FLOW (MANDATORY — total duration: 25-30 minutes):
 
 3. STATE_2 (Coding Round) — no time limit:
    Present ONE simple DSA problem.
-   Pick from classic beginner-friendly problems: Two Sum, Palindrome Check, Reverse String/Array, Anagram Check, FizzBuzz, Max Subarray Sum (Kadane), Missing Number, Valid Parentheses, Contains Duplicate, Merge Sorted Arrays, or equivalent easy problems.
    Frame the problem as 1-2 sentences. Do NOT use complex algorithms (no DP, no graphs, no trees unless trivial).
    Include starter code in editorConfig.codeContent with a function stub and comment describing the task.
    Offer hints progressively if the candidate seems stuck — wait for them to ask or show clear confusion before hinting.
@@ -68,14 +99,21 @@ In communicationNotes, capture specific observations about communication quality
 hiringDecision must be null until STATE_3, then set to one of the three values.
 """
 
-def chat_with_llm(messages, jd_context="General Software Engineer"):
+def chat_with_llm(messages, jd_context="General Software Engineer", user_performance: str = None, language: str = "javascript"):
     try:
         # Use replace for the JD_TEXT to avoid conflicts with JSON braces
         formatted_prompt = SYSTEM_PROMPT.replace("{JD_TEXT}", jd_context)
+        
+        # Get a random coding problem
+        problem = get_random_coding_problem(user_performance)
+        
+        # Add problem context to messages if we're in STATE_2
+        problem_context = f"\n\nCurrent Coding Problem for STATE_2:\nTitle: {problem['title']}\nDescription: {problem['description']}\nDifficulty: {problem['difficulty']}"
+        
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": formatted_prompt}
+                {"role": "system", "content": formatted_prompt + problem_context}
             ] + messages
         )
         content = response.choices[0].message.content
