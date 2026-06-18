@@ -10,6 +10,7 @@ interface Interview {
   sessionId: string;
   created_at: string;
   analysis?: InterviewAnalysis;
+  history?: Array<{ role: string; content: string }>;
   dropbox_audio_url?: string;
   finalized?: boolean;
   finalization_error?: string;
@@ -19,6 +20,7 @@ interface InterviewHistoryCardProps {
   interview: Interview;
   onViewAnalysis: (interview: Interview) => void;
   onPlayAudio: (interview: Interview) => void;
+  onViewTranscript: (interview: Interview) => void;
   onRetryFinalize?: (interview: Interview) => void;
 }
 
@@ -26,6 +28,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
   interview, 
   onViewAnalysis, 
   onPlayAudio,
+  onViewTranscript,
   onRetryFinalize 
 }) => {
   const dateObj = new Date(interview.created_at);
@@ -142,6 +145,23 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
                   title="Play Recording"
                 >
                     <Play size={16} fill="currentColor" />
+                </button>
+            )}
+
+            {isFinished && (
+                <button 
+                  onClick={() => onViewTranscript(interview)} 
+                  className="secondary" 
+                  style={{ 
+                    padding: '0.5rem', 
+                    borderRadius: 'var(--radius-sm)',
+                    width: '36px',
+                    height: '36px',
+                    minHeight: '36px'
+                  }}
+                  title="View Transcript"
+                >
+                    <FileText size={16} />
                 </button>
             )}
             

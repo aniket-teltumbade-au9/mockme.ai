@@ -58,6 +58,7 @@ interface InterviewRecord {
   sessionId: string;
   created_at: string;
   analysis?: { hire_verdict?: string };
+  history?: Array<{ role: string; content: string }>;
   dropbox_audio_url?: string;
   finalized?: boolean;
   finalization_error?: string;
@@ -89,6 +90,7 @@ export default function InterviewPage() {
   // Pre-flight wizard
   const [showPreflight, setShowPreflight] = useState(false);
   const [pendingJd, setPendingJd] = useState<string | null>(null);
+  const [pendingResume, setPendingResume] = useState<File | null>(null);
 
   // Live transcript (last thing Sarah said)
   const [lastSarahText, setLastSarahText] = useState<string | null>(null);
@@ -119,6 +121,7 @@ export default function InterviewPage() {
   const [selectedInterview, setSelectedInterview] = useState<InterviewRecord | null>(null);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   const fetchProgress = useCallback(async () => {
     if (!userId) return;
@@ -175,17 +178,23 @@ export default function InterviewPage() {
   };
 
   // Called when preflight wizard gives the all-clear
-  const handlePreflightComplete = async () => {
+  const handlePreflightComplete = async (topic: string, isRehearsal: boolean) => {
     setShowPreflight(false);
     if (!pendingJd) return;
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const res = await axios.post(`${API_BASE}/session/start`, {
-        jd: pendingJd,
-        persona: selectedPersona.id || undefined,
-        voice_lang: selectedVoice.lang_code,
-      }, { headers: authHeaders() });
+      const formData = new FormData();
+      formData.append("jd", pendingJd);
+      if (topic) formData.append("topic", topic);
+      formData.append("is_rehearsal", isRehearsal.toString());
+      if (selectedPersona.id) formData.append("persona", selectedPersona.id);
+      formData.append("voice_lang", selectedVoice.lang_code);
+      if (pendingResume) formData.append("resume", pendingResume);
+
+      const res = await axios.post(`${API_BASE}/session/start`, formData, { 
+        headers: { ...authHeaders(), "Content-Type": "multipart/form-data" } 
+      });
       if (res.data.error) {
         setErrorMsg(res.data.message);
         setIsLoading(false);
@@ -302,6 +311,8 @@ export default function InterviewPage() {
     } catch (err) {
       console.error("Error sending audio", err);
       setIsSpeaking(false);
+      setErrorMsg("Failed to process audio response.");
+      setTimeout(() => setErrorMsg(null), 5000);
     } finally {
       setIsLoading(false);
     }
@@ -310,11 +321,10 @@ export default function InterviewPage() {
   const codeChangeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onCodeChange = (value?: string) => {
-    if (!value || !sessionIdRef.current) return;
+    if (!value) return;
     latestCodeRef.current = value;
     setCodeSyncState("idle");
-    if (codeChangeTimer.current) clearTimeout(codeChangeTimer.current);
-    codeChangeTimer.current = setTimeout(() => syncCode(value), 2000);
+    // Removed automatic sync timer
   };
 
   const syncCode = async (code: string) => {
@@ -336,6 +346,8 @@ export default function InterviewPage() {
     } catch (err) {
       console.error("Failed to sync code", err);
       setCodeSyncState("idle");
+      setErrorMsg("Failed to save code. Please try again.");
+      setTimeout(() => setErrorMsg(null), 5000);
     }
   };
 
@@ -584,6 +596,10 @@ export default function InterviewPage() {
                           setSelectedInterview(i);
                           setShowAnalysis(true);
                         }}
+                        onViewTranscript={(i) => {
+                          setSelectedInterview(i);
+                          setShowTranscript(true);
+                        }}
                         onRetryFinalize={handleRetryAftersave}
                       />
                     ))
@@ -640,6 +656,24 @@ export default function InterviewPage() {
                   marginBottom: "1.5rem",
                 }}
               />
+              <div style={{ marginBottom: "1.5rem" }}>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>
+                  Resume (PDF/Docx)
+                </label>
+                <input
+                  type="file"
+                  onChange={(e) => setPendingResume(e.target.files?.[0] || null)}
+                  style={{
+                    width: "100%",
+                    background: "var(--secondary)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "12px",
+                    padding: "0.75rem 1rem",
+                    color: "white",
+                    fontSize: "0.9rem",
+                  }}
+                />
+              </div>
               <div style={{ marginBottom: "1.5rem" }}>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>
                   Interview Persona
@@ -707,6 +741,39 @@ export default function InterviewPage() {
             onClose={() => setShowAnalysis(false)}
           />
         )}
+        
+        {showTranscript && selectedInterview && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 100,
+            width: '100%',
+            maxWidth: '640px',
+            background: 'var(--background-alt)',
+            borderLeft: '1px solid var(--border)',
+            padding: '2rem',
+            overflowY: 'auto'
+          }}>
+            <button className="secondary" onClick={() => setShowTranscript(false)} style={{ marginBottom: '1rem' }}>Close</button>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Transcript</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {selectedInterview.history?.map((msg, index) => (
+                <div key={index} style={{
+                    padding: '1rem',
+                    borderRadius: 'var(--radius-md)',
+                    background: msg.role === 'assistant' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.03)'
+                }}>
+                    <strong style={{ display: 'block', marginBottom: '0.5rem', color: msg.role === 'assistant' ? 'var(--primary)' : 'var(--foreground)' }}>
+                        {msg.role === 'assistant' ? 'Sarah' : 'You'}
+                    </strong>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--foreground-muted)' }}>{msg.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div> // end outer container
     );
@@ -717,9 +784,23 @@ export default function InterviewPage() {
 
   return (
     <div className="container">
+      {errorMsg && (
+        <div className="fixed top-4 right-4 z-[9999] bg-red-600 text-white px-6 py-3 rounded-lg shadow-xl">
+          {errorMsg}
+        </div>
+      )}
+      {isFinalizing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 text-white">
+            <Loader2 className="animate-spin" size={48} />
+            <p className="text-xl font-semibold">Finalizing interview...</p>
+          </div>
+        </div>
+      )}
       <header className="header">
-        <div className="logo" style={{ fontWeight: 800, letterSpacing: "1px" }}>
-          MOCKME.AI
+        <div className="flex items-center gap-0.5 font-bold tracking-tight">
+          <span className="text-slate-100 text-lg">mockme</span>
+          <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs">.ai</span>
         </div>
         <div className="progress-container">
           <div className="progress-bar-outer">

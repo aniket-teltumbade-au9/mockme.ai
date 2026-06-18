@@ -14,7 +14,8 @@ DEFAULT_PERSONAS = {
     "Experienced Peer": "You are a peer-level senior engineer. You discuss architecture, trade-offs, and real-world engineering challenges collegially."
 }
 
-DEFAULT_INTERVIEW_STRUCTURE = """1. STATE_0 (Introduction): ~1 min.\n2. STATE_1 (Deep Tech Dive): ~4 min, ask two technical questions.\n3. STATE_2 (Coding Round): ~4 min, present a bite‑sized coding challenge.\n4. STATE_3 (Conclusion): ~1 min to summarize and decide hiring."""
+DEFAULT_INTERVIEW_STRUCTURE = """1. STATE_0 (Introduction): Brief intro.\n2. STATE_1 (Deep Tech Dive): Ask a few technical questions.\n3. STATE_2 (Coding Round): Present a coding challenge. No time pressure, focus on thought process.\n4. STATE_3 (Conclusion): Summarize and decide hiring."""
+from app.logger import logger
 from typing import Optional
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -23,7 +24,7 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.models.session import Session
-from app.services.llm import chat_with_llm
+from app.services.llm import chat_with_llm, generate_coding_problem
 from app.services.stt import transcribe_audio
 from app.services.tts import get_audio_bytes
 from app.utils.parser import parse_llm_response
@@ -31,6 +32,7 @@ from app.services.auth import get_current_user
 from app.services.database import db, get_user_interviews, get_user_progress, can_start_interview, save_interview_session, update_progress, update_session, test_db_connection
 from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_path, get_turn_audio_path, concatenate_turn_audio
 from app.services.voice_service import get_or_refresh_voices
+from app.services.dropbox_service import DropboxService
 
 from app.routers import dropbox_auth, interviews, code_runner
 from app.routers.interviews import finalize_interview_task
@@ -89,17 +91,6 @@ def get_audio_duration_from_file(filepath: str) -> float:
         print(f"Warning: Could not get audio duration from file: {e}")
     return 0.0
 
-class StartSessionRequest(BaseModel):
-    # Job Description for interview; can be empty if persona is used
-    jd: Optional[str] = None
-    # Interviewer persona name, e.g., "Calm", "Strict"
-    persona: Optional[str] = None
-    # Custom interview structure provided by candidate; if omitted, defaults used
-    interview_structure: Optional[str] = None
-    # Experience level of candidate, e.g., "Junior", "Mid", "Senior"
-    experience_level: Optional[str] = None
-    # Preferred AI voice language/accent code for TTS, e.g., "en-in", "en-gb"
-    voice_lang: Optional[str] = None
 
 @app.get("/health")
 async def health_check():
@@ -141,40 +132,63 @@ async def text_to_speech(
 
 @app.post("/api/session/start")
 async def start_session(
-    request: StartSessionRequest,
+    jd: Optional[str] = Form(None),
+    topic: Optional[str] = Form(None),
+    is_rehearsal: bool = Form(False),
+    persona: Optional[str] = Form(None),
+    voice_lang: Optional[str] = Form("en-in"),
+    resume: Optional[UploadFile] = File(None),
     current_user: dict = Depends(get_current_user),
 ):
     user_id = current_user["user_id"]
     if not await can_start_interview(user_id):
         return {
-            "error": "Daily limit reached", 
+            "error": "Daily limit reached",
             "message": "You have already completed your interview for today. Consistency is key, come back tomorrow!"
         }
-    
+
     session_id = str(uuid.uuid4())
-    sessions[session_id] = Session(sessionId=session_id, user_id=user_id, created_at=datetime.now(timezone.utc))
-    session = sessions[session_id]
+    # Set JD or Topic as the context
+    context = jd if jd else f"Topic-Specific Interview on: {topic}" if topic else "General Software Engineer"
+    sessions[session_id] = Session(sessionId=session_id, user_id=user_id, created_at=datetime.now(timezone.utc), topic=topic, jd=context, is_rehearsal=is_rehearsal)
+    # ... rest of the function ...
+
+    
+    # Handle resume upload to Dropbox if provided
+    resume_url = None
+    if resume:
+        if current_user.get("dropbox_refresh_token"):
+            try:
+                service = DropboxService(current_user["dropbox_refresh_token"])
+                resume_bytes = await resume.read()
+                resume_url = service.upload_resume(session_id, resume.filename, resume_bytes)
+                print(f"DEBUG: Resume uploaded to Dropbox: {resume_url}")
+            except Exception as e:
+                print(f"ERROR uploading resume to Dropbox: {e}")
+        else:
+            print("WARN: Resume provided but no Dropbox token")
     
     # Store session metadata
-    session.currentCodeWorkspace = request.jd
-    session.persona = request.persona
-    session.experience_level = request.experience_level
-    session.voice_lang = request.voice_lang or "en-in"
+    session.currentCodeWorkspace = jd
+    session.persona = persona
+    session.voice_lang = voice_lang or "en-in"
+    
+    # Calculate day number and initial performance score
+    progress = await get_user_progress(user_id)
+    session.day_number = progress.get("total_interviews", 0) + 1
+    session.performance_score = 50.0 # Default starting score
     
     # Build LLM prompt context
-    if session.persona:
-        persona_desc = DEFAULT_PERSONAS.get(session.persona, session.persona)
+    if persona:
+        persona_desc = DEFAULT_PERSONAS.get(persona, persona)
         jd_context = persona_desc
     else:
-        if request.jd:
-            if request.interview_structure:
-                jd_context = f"Job Description:\n{request.jd}\n\nInterview Structure:\n{request.interview_structure}"
-            else:
-                jd_context = f"Job Description:\n{request.jd}\n\nInterview Structure:\n{DEFAULT_INTERVIEW_STRUCTURE}"
-        elif request.interview_structure:
-            jd_context = f"Interview Structure:\n{request.interview_structure}"
-        else:
-            jd_context = DEFAULT_INTERVIEW_STRUCTURE
+        # Construct JD context including resume URL if available
+        jd_content = jd or ""
+        if resume_url:
+            jd_content += f"\n\nCandidate Resume: {resume_url}"
+            
+        jd_context = f"Job Description (Day {session.day_number}):\n{jd_content}\n\nInterview Structure:\n{DEFAULT_INTERVIEW_STRUCTURE}"
     
     # Initialize audio duration accumulator
     session.audio_duration_accumulator = 0.0
@@ -184,7 +198,7 @@ async def start_session(
     ui_config, voice_script = parse_llm_response(response_text)
     ui_config["voice_script"] = voice_script
     
-    session.history.append({"role": "assistant", "content": response_text})
+    session.history.append({"role": "assistant", "content": voice_script})
     
     # Generate and save initial TTS audio clip
     tts_audio = get_audio_bytes(voice_script, session.voice_lang)
@@ -203,12 +217,14 @@ async def start_session(
     # Persist session to DB
     await save_interview_session({
         "sessionId": session_id,
-        "jd": request.jd,
-        "persona": request.persona,
-        "experience_level": request.experience_level,
-        "voice_lang": request.voice_lang or "en-in",
+        "jd": jd,
+        "persona": persona,
+        "resume_url": resume_url,
+        "voice_lang": voice_lang or "en-in",
         "user_id": user_id,
-        "status": "active"
+        "status": "active",
+        "day_number": session.day_number,
+        "performance_score": session.performance_score
     })
     
     return {
@@ -246,22 +262,23 @@ async def respond_audio(
 
     jd = session.currentCodeWorkspace
     audio_bytes = await file.read()
-    print(f"DEBUG: Turn audio received: {len(audio_bytes)} bytes, filename={file.filename}")
+    logger.info(f"Turn audio received: {len(audio_bytes)} bytes, filename={file.filename}")
 
     user_audio_duration = get_audio_duration(audio_bytes)
-    print(f"DEBUG: Turn audio duration: {user_audio_duration:.2f}s")
+    logger.info(f"Turn audio duration: {user_audio_duration:.2f}s")
 
     user_text = transcribe_audio(audio_bytes)
-    print(f"DEBUG: Transcription: '{user_text}'")
+    logger.info(f"Transcription: '{user_text}'")
     if not user_text:
         user_text = "[Silence]"
 
     session.history.append({"role": "user", "content": user_text})
-    response_text = chat_with_llm(session.history, jd_context=jd)
-    session.history.append({"role": "assistant", "content": response_text})
-
+    response_text = chat_with_llm(session.history, jd_context=jd, coding_problem=session.currentCodeWorkspace)
+    
     ui_config, voice_script = parse_llm_response(response_text)
     ui_config["voice_script"] = voice_script
+    
+    session.history.append({"role": "assistant", "content": voice_script})
 
     tts_audio = get_audio_bytes(voice_script, session.voice_lang)
     tts_audio_duration = get_audio_duration(tts_audio)
@@ -287,12 +304,36 @@ async def respond_audio(
     session.audio_duration_accumulator += user_audio_duration + tts_audio_duration
     print(f"DEBUG: Accumulator now={session.audio_duration_accumulator:.2f}s turn_count={turn_index + 1}")
 
-    if 'currentState' in ui_config:
+    # --- VALIDATE STATE ---
+    allowed_states = ["STATE_0", "STATE_1", "STATE_2", "STATE_3"]
+    if 'currentState' in ui_config and ui_config['currentState'] in allowed_states:
         session.currentState = ui_config['currentState']
-        print(f"DEBUG: State -> {session.currentState}")
+        print(f"DEBUG: Valid State Transition -> {session.currentState}")
+    else:
+        print(f"WARNING: Invalid or missing state in LLM response, staying in {session.currentState}")
+        ui_config['currentState'] = session.currentState
+
+    if session.currentState == "STATE_2":
+            # Generate problem only if not already done
+            if "Title:" not in session.currentCodeWorkspace:
+                print(f"DEBUG: Generating dynamic coding problem for session {sessionId}")
+                problem = generate_coding_problem(session.jd or "General SWE", session.day_number, session.performance_score)
+                session.currentCodeWorkspace = f"Title: {problem['title']}\nDescription: {problem['description']}"
+                ui_config["editorConfig"] = {
+                    "language": "javascript",
+                    "codeContent": problem['starter_code'].get("javascript", "")
+                }
+                
         if session.currentState == "STATE_3":
             print(f"=== STATE_3 REACHED - Auto-finalizing session {sessionId} ===")
-            await update_progress(session.user_id, sessionId, ui_config.get("detectedGaps", []), voice_script)
+
+            # Generate remediation plan
+            from app.services.remediation import generate_remediation_plan
+            gaps = ui_config.get("detectedGaps", [])
+            remediation_plan = generate_remediation_plan(gaps)
+
+            await update_progress(session.user_id, sessionId, gaps, voice_script + "\n\nREMEDIATION PLAN:\n" + remediation_plan)
+
 
             # Build combined mic from all turn recordings
             print(f"DEBUG: Building combined mic from turn files...")
@@ -396,11 +437,12 @@ async def respond_code(
 
     prompt = f"User updated code to:\n```{code}```"
     session.history.append({"role": "user", "content": prompt})
-    response_text = chat_with_llm(session.history, jd_context=jd)
-    session.history.append({"role": "assistant", "content": response_text})
+    response_text = chat_with_llm(session.history, jd_context=jd, coding_problem=session.currentCodeWorkspace)
     
     ui_config, voice_script = parse_llm_response(response_text)
     ui_config["voice_script"] = voice_script
+    
+    session.history.append({"role": "assistant", "content": voice_script})
 
     # Generate and save TTS audio clip
     tts_audio = get_audio_bytes(voice_script, session.voice_lang)
@@ -417,23 +459,38 @@ async def respond_code(
     session.tts_clips.append({"path": clip_path, "start_time": clip_start_time})
     session.audio_duration_accumulator += tts_audio_duration
 
-    if 'currentState' in ui_config:
+    # --- VALIDATE STATE ---
+    allowed_states = ["STATE_0", "STATE_1", "STATE_2", "STATE_3"]
+    if 'currentState' in ui_config and ui_config['currentState'] in allowed_states:
         session.currentState = ui_config['currentState']
-        if session.currentState == "STATE_3":
-            print(f"=== STATE_3 REACHED via respond-code - Auto-finalizing session {sessionId} ===")
-            await update_progress(session.user_id, sessionId, ui_config.get("detectedGaps", []), voice_script)
-            combined_mic_path = concatenate_turn_audio(sessionId)
-            if combined_mic_path and os.path.exists(combined_mic_path):
-                print(f"DEBUG: Combined mic saved -> {combined_mic_path} ({os.path.getsize(combined_mic_path)} bytes)")
-                await update_session(sessionId, {
-                    "raw_mic_path": combined_mic_path,
-                    "finalized": False,
-                    "finalization_error": None,
-                })
-                background_tasks.add_task(finalize_interview_task, sessionId, combined_mic_path)
-                print(f"DEBUG: finalize_interview_task scheduled for {sessionId}")
-            else:
-                print(f"ERROR: Failed to build combined mic for session {sessionId} (via respond-code)")
+        print(f"DEBUG: Valid State Transition (respond-code) -> {session.currentState}")
+    else:
+        print(f"WARNING: Invalid or missing state in LLM response (respond-code), staying in {session.currentState}")
+        ui_config['currentState'] = session.currentState
+
+    if session.currentState == "STATE_3":
+        print(f"=== STATE_3 REACHED - Auto-finalizing session {sessionId} ===")
+
+        # Generate remediation plan
+        from app.services.remediation import generate_remediation_plan
+        gaps = ui_config.get("detectedGaps", [])
+        remediation_plan = generate_remediation_plan(gaps)
+
+        await update_progress(session.user_id, sessionId, gaps, voice_script + "\n\nREMEDIATION PLAN:\n" + remediation_plan)
+
+        # Build combined mic from all turn recordings
+        combined_mic_path = concatenate_turn_audio(sessionId)
+        if combined_mic_path and os.path.exists(combined_mic_path):
+            print(f"DEBUG: Combined mic saved -> {combined_mic_path} ({os.path.getsize(combined_mic_path)} bytes)")
+            await update_session(sessionId, {
+                "raw_mic_path": combined_mic_path,
+                "finalized": False,
+                "finalization_error": None,
+            })
+            background_tasks.add_task(finalize_interview_task, sessionId, combined_mic_path)
+            print(f"DEBUG: finalize_interview_task scheduled for {sessionId}")
+        else:
+            print(f"ERROR: Failed to build combined mic for session {sessionId} (via respond-code)")
 
     await update_session(sessionId, {
         "history": session.history,

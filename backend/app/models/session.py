@@ -24,9 +24,13 @@ class Session(BaseModel):
     detectedGaps: List[str] = []
     currentCodeWorkspace: str = ""
     jd: Optional[str] = None
+    topic: Optional[str] = None # New field
+    is_rehearsal: bool = False # Rehearsal mode flag
     persona: Optional[str] = None
     experience_level: Optional[str] = None
     voice_lang: str = "en-in"
+    day_number: int = 1
+    performance_score: float = 50.0
     
     # Finalization fields
     finalized: bool = False

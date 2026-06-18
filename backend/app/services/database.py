@@ -18,7 +18,7 @@ client = AsyncIOMotorClient(
     connectTimeoutMS=30000,
     serverSelectionTimeoutMS=30000
 )
-db = client.mockme_db
+db = client.mockme_ai_db
 
 # Verify connection on startup (optional but helpful for logs)
 async def test_db_connection():
@@ -100,16 +100,22 @@ async def save_interview_session(session_data):
     await db.interviews.insert_one(session_data)
 
 async def update_progress(user_id: str, session_id: str, gaps: list, feedback: str):
-    # Fetch existing gaps and merge — avoids wiping gaps from prior sessions
+    # Fetch existing data
     existing = await db.progress.find_one({"user_id": user_id})
-    existing_gaps: list = existing.get("skill_gaps", []) if existing else []
-    merged_gaps = list(set(existing_gaps + gaps))
+    
+    # Structure for the new snapshot
+    new_snapshot = {"timestamp": datetime.now(timezone.utc), "gaps": gaps}
+    
+    # Update logic
     await db.progress.update_one(
         {"user_id": user_id},
         {
             "$inc": {"total_interviews": 1},
-            "$push": {"history": {"session_id": session_id, "date": datetime.now(timezone.utc), "feedback": feedback}},
-            "$set": {"skill_gaps": merged_gaps}
+            "$push": {
+                "history": {"session_id": session_id, "date": datetime.now(timezone.utc), "feedback": feedback},
+                "skill_gaps_history": new_snapshot
+            },
+            "$set": {"skill_gaps": list(set((existing.get("skill_gaps", []) if existing else []) + gaps))}
         },
         upsert=True
     )

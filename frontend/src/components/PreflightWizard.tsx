@@ -28,7 +28,7 @@ interface Step {
 
 interface PreflightWizardProps {
   userId: string;
-  onComplete: () => void;
+  onComplete: (topic: string, isRehearsal: boolean) => void;
   onCancel: () => void;
 }
 
@@ -58,6 +58,8 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
     },
   ]);
   const [dropboxWarningAcked, setDropboxWarningAcked] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState("");
+  const [isRehearsal, setIsRehearsal] = useState(false);
 
   const patchStep = (id: string, patch: Partial<Step>) =>
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -194,6 +196,32 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         <p style={{ color: "var(--foreground-muted)", fontSize: "0.95rem" }}>
           Ensuring everything is ready for your session.
         </p>
+        <div style={{ marginTop: '1rem' }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', fontWeight: 600 }}>Topic (Optional)</label>
+          <input 
+            type="text" 
+            value={selectedTopic}
+            onChange={(e) => setSelectedTopic(e.target.value)}
+            placeholder="e.g., React, System Design, DSA"
+            style={{ 
+              width: '100%', 
+              padding: '0.75rem', 
+              borderRadius: '8px', 
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid var(--border)',
+              color: 'white'
+            }}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={isRehearsal}
+              onChange={(e) => setIsRehearsal(e.target.checked)}
+              style={{ width: '16px', height: '16px' }}
+            />
+            Rehearsal Mode (Bypass strict pacing)
+          </label>
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
@@ -316,7 +344,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         <button
           disabled={!canProceed}
           style={{ flex: 2, minHeight: '44px' }}
-          onClick={onComplete}
+          onClick={() => onComplete(selectedTopic, isRehearsal)}
         >
           {!allDone ? (
             <>
