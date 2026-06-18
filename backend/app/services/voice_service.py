@@ -1,14 +1,16 @@
 from datetime import datetime, timezone, timedelta
 from app.services.database import db
 
+# Voices aligned with frontend VoiceSelector
+# lang_code values must match what frontend expects
 FREE_VOICES = [
-    {"id": "en-us", "name": "English (US)", "lang_code": "en", "flag": "\U0001f1fa\U0001f1f8", "accent": "American"},
-    {"id": "en-gb", "name": "English (UK)", "lang_code": "en-gb", "flag": "\U0001f1ec\U0001f1e7", "accent": "British"},
-    {"id": "en-in", "name": "English (India)", "lang_code": "en-in", "flag": "\U0001f1ee\U0001f1f3", "accent": "Indian"},
-    {"id": "en-au", "name": "English (Australia)", "lang_code": "en-au", "flag": "\U0001f1e6\U0001f1fa", "accent": "Australian"},
-    {"id": "en-ca", "name": "English (Canada)", "lang_code": "en-ca", "flag": "\U0001f1e8\U0001f1e6", "accent": "Canadian"},
-    {"id": "en-ie", "name": "English (Ireland)", "lang_code": "en-ie", "flag": "\U0001f1ee\U0001f1ea", "accent": "Irish"},
-    {"id": "en-za", "name": "English (South Africa)", "lang_code": "en-za", "flag": "\U0001f1ff\U0001f1e6", "accent": "South African"},
+    {"id": "en-us", "name": "English (US)", "lang_code": "en", "flag": "\U0001f1fa\U0001f1f8", "accent": "American", "tld": "com"},
+    {"id": "en-gb", "name": "English (UK)", "lang_code": "en-gb", "flag": "\U0001f1ec\U0001f1e7", "accent": "British", "tld": "co.uk"},
+    {"id": "en-in", "name": "English (India)", "lang_code": "en-in", "flag": "\U0001f1ee\U0001f1f3", "accent": "Indian", "tld": "co.in"},
+    {"id": "en-au", "name": "English (Australia)", "lang_code": "en-au", "flag": "\U0001f1e6\U0001f1fa", "accent": "Australian", "tld": "com.au"},
+    {"id": "en-ca", "name": "English (Canada)", "lang_code": "en-ca", "flag": "\U0001f1e8\U0001f1e6", "accent": "Canadian", "tld": "ca"},
+    {"id": "en-ie", "name": "English (Ireland)", "lang_code": "en-ie", "flag": "\U0001f1ee\U0001f1ea", "accent": "Irish", "tld": "ie"},
+    {"id": "en-za", "name": "English (South Africa)", "lang_code": "en-za", "flag": "\U0001f1ff\U0001f1e6", "accent": "South African", "tld": "co.za"},
 ]
 
 REFRESH_DAYS = 15

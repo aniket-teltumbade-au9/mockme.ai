@@ -24,9 +24,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const storedId = localStorage.getItem("auth_user_id");
     const storedToken = localStorage.getItem("dropbox_access_token");
-    if (storedId) setUserIdState(storedId);
-    if (storedToken) setAccessTokenState(storedToken);
-    setIsInitialized(true);
+    if (storedId) {
+      setTimeout(() => setUserIdState(storedId), 0);
+    }
+    if (storedToken) {
+      setTimeout(() => setAccessTokenState(storedToken), 0);
+    }
+    setTimeout(() => setIsInitialized(true), 0);
   }, []);
 
   const setUserId = useCallback((id: string | null) => {

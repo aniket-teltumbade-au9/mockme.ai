@@ -15,6 +15,7 @@ lib64/
 .env.production.local
 backend/.env
 backend/tts_clips/
+backend/recordings/
 
 # Build outputs
 .next/

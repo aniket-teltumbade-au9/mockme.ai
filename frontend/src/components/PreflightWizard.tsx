@@ -59,16 +59,13 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
   ]);
   const [dropboxWarningAcked, setDropboxWarningAcked] = useState(false);
 
-  // Helper to update state — wrap in ref to avoid effect deps needed
   const patchStep = (id: string, patch: Partial<Step>) =>
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
 
-  // Ref so the async check sequence can call itself for retry without stale closures
   const doChecksRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     const doChecks = async () => {
-      // Reset all to pending / first step loading
       setSteps([
         {
           id: "mic",
@@ -90,7 +87,6 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         },
       ]);
 
-      // --- Step 1: Mic (blocking) ---
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -108,7 +104,6 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         return;
       }
 
-      // --- Step 2: DB (blocking) ---
       patchStep("db", {
         status: "loading",
         detail: "Provisioning session storage…",
@@ -126,7 +121,6 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         return;
       }
 
-      // --- Step 4: Dropbox (non-blocking) ---
       patchStep("dropbox", { status: "loading", detail: "Checking Dropbox…" });
       try {
         const res = await axios.get(`${API_BASE}/dropbox/status`, { headers: authHeaders() });
@@ -172,196 +166,168 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
     const allDone = steps.every(
       (s) => s.status !== "loading" && s.status !== "pending",
     );
-    if (!allDone) return false;
-    if (byId.mic?.status === "error" || byId.db?.status === "error")
-      return false;
-    if (byId.dropbox?.status === "warn" && !dropboxWarningAcked) return false;
-    return true;
-  }, [steps, dropboxWarningAcked]);
+    return allDone;
+  }, [steps]);
 
-  const allDone = steps.every(
-    (s) => s.status !== "loading" && s.status !== "pending",
-  );
+  const allDone = useMemo(() => {
+    return steps.every(
+      (s) => s.status !== "loading" && s.status !== "pending",
+    );
+  }, [steps]);
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(2, 6, 23, 0.85)",
-        backdropFilter: "blur(12px)",
-        zIndex: 1000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+    <div 
+      className="glass-panel" 
+      style={{ 
+        width: '100%',
+        maxWidth: '500px',
+        margin: '1rem',
+        padding: '1.5rem',
+        maxHeight: '90vh',
+        overflowY: 'auto'
       }}
     >
-      <div
-        className="glass-panel"
-        style={{
-          width: "95%",
-          maxWidth: "540px",
-          padding: "3rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "2.5rem",
-          boxShadow: '0 50px 100px -20px rgba(0,0,0,0.5)'
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-            <div style={{ 
-                width: '56px', 
-                height: '56px', 
-                background: 'var(--secondary)', 
-                borderRadius: '16px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                margin: '0 auto 1.5rem',
-                border: '1px solid var(--border)'
-            }}>
-                <Settings2 size={28} color="var(--primary)" />
-            </div>
-          <h2 style={{ fontSize: "1.75rem", marginBottom: "0.5rem" }}>System Check</h2>
-          <p style={{ color: "var(--foreground-muted)", fontSize: "0.95rem" }}>
-            Ensuring everything is ready for your session.
-          </p>
-        </div>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+          Session Setup
+        </h2>
+        <p style={{ color: "var(--foreground-muted)", fontSize: "0.95rem" }}>
+          Ensuring everything is ready for your session.
+        </p>
+      </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          {steps.map((step) => (
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        {steps.map((step) => (
+          <div
+            key={step.id}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.75rem",
+              padding: "1rem",
+              background: "rgba(255,255,255,0.03)",
+              borderRadius: "var(--radius-lg)",
+              border: "1px solid var(--border)",
+            }}
+          >
             <div
-              key={step.id}
               style={{
                 display: "flex",
-                flexDirection: "column",
-                gap: "0.75rem",
-                padding: "1.25rem",
-                background: "rgba(255,255,255,0.03)",
-                borderRadius: "var(--radius-lg)",
-                border: "1px solid var(--border)",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                  <div style={{ color: step.status === 'ok' ? 'var(--accent)' : step.status === 'error' ? 'var(--danger)' : step.status === 'warn' ? 'var(--warning)' : 'var(--foreground-muted)' }}>
-                    {step.id === 'mic' && <Mic size={20} />}
-                    {step.id === 'db' && <Database size={20} />}
-                    {step.id === 'dropbox' && <Cloud size={20} />}
-                  </div>
-                  <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>{step.label}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div style={{ color: step.status === 'ok' ? 'var(--accent)' : step.status === 'error' ? 'var(--danger)' : step.status === 'warn' ? 'var(--warning)' : 'var(--foreground-muted)' }}>
+                  {step.id === 'mic' && <Mic size={20} />}
+                  {step.id === 'db' && <Database size={20} />}
+                  {step.id === 'dropbox' && <Cloud size={20} />}
                 </div>
-                <div>
-                  {step.status === "loading" && (
-                    <Loader2 size={20} className="animate-spin" color="var(--primary)" />
-                  )}
-                  {step.status === "ok" && (
-                    <CheckCircle2 size={20} color="var(--accent)" />
-                  )}
-                  {step.status === "error" && (
-                    <XCircle size={20} color="var(--danger)" />
-                  )}
-                  {step.status === "warn" && (
-                    <AlertTriangle size={20} color="var(--warning)" />
-                  )}
-                </div>
+                <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>{step.label}</span>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                  gap: "1rem",
-                }}
-              >
-                <p style={{ fontSize: "0.85rem", color: "var(--foreground-muted)", flex: 1 }}>
-                  {step.detail}
-                </p>
-                {step.onAction && (
-                  <button
-                    className="secondary"
-                    style={{
-                      fontSize: "0.75rem",
-                      padding: "6px 12px",
-                      borderRadius: "8px",
-                      flexShrink: 0,
-                    }}
-                    onClick={step.onAction}
-                  >
-                    {step.actionLabel}
-                  </button>
+              <div>
+                {step.status === "loading" && (
+                  <Loader2 size={20} className="animate-spin" color="var(--primary)" />
+                )}
+                {step.status === "ok" && (
+                  <CheckCircle2 size={20} color="var(--accent)" />
+                )}
+                {step.status === "error" && (
+                  <XCircle size={20} color="var(--danger)" />
+                )}
+                {step.status === "warn" && (
+                  <AlertTriangle size={20} color="var(--warning)" />
                 )}
               </div>
-
-              {step.id === "dropbox" &&
-                step.status === "warn" &&
-                !dropboxWarningAcked && (
-                  <div
-                    style={{
-                      marginTop: "0.5rem",
-                      paddingTop: "0.75rem",
-                      borderTop: "1px solid var(--border)",
-                    }}
-                  >
-                    <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.6rem",
-                        fontSize: "0.8rem",
-                        cursor: "pointer",
-                        color: "var(--warning)",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        onChange={(e) =>
-                          setDropboxWarningAcked(e.target.checked)
-                        }
-                        style={{ accentColor: 'var(--warning)' }}
-                      />
-                      I understand recordings won&apos;t be saved to cloud
-                      storage
-                    </label>
-                  </div>
-                )}
             </div>
-          ))}
-        </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: "1rem",
+                flexWrap: 'wrap'
+              }}
+            >
+              <p style={{ fontSize: "0.85rem", color: "var(--foreground-muted)", flex: 1, minWidth: '150px' }}>
+                {step.detail}
+              </p>
+              {step.onAction && (
+                <button
+                  className="secondary"
+                  style={{
+                    fontSize: "0.75rem",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    flexShrink: 0,
+                    minHeight: '36px'
+                  }}
+                  onClick={step.onAction}
+                >
+                  {step.actionLabel}
+                </button>
+              )}
+            </div>
 
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <button
-            className="secondary"
-            style={{ flex: 1, height: "52px" }}
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
-          <button
-            disabled={!canProceed}
-            style={{ flex: 2, height: "52px" }}
-            onClick={onComplete}
-          >
-            {!allDone ? (
-              <>
-                <Loader2 size={18} className="animate-spin" /> Checking…
-              </>
-            ) : (
-              <>
-                Begin Interview <ChevronRight size={18} />
-              </>
-            )}
-          </button>
-        </div>
+            {step.id === "dropbox" &&
+              step.status === "warn" &&
+              !dropboxWarningAcked && (
+                <div
+                  style={{
+                    marginTop: "0.5rem",
+                    paddingTop: "0.75rem",
+                    borderTop: "1px solid var(--border)",
+                  }}
+                >
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.6rem",
+                      fontSize: "0.8rem",
+                      cursor: "pointer",
+                      color: "var(--warning)",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      onChange={(e) =>
+                        setDropboxWarningAcked(e.target.checked)
+                      }
+                      style={{ accentColor: 'var(--warning)', width: '16px', height: '16px' }}
+                    />
+                    I understand recordings won&apos;t be saved to cloud
+                    storage
+                  </label>
+                </div>
+              )}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: "1rem", marginTop: '1.5rem', flexWrap: 'wrap' }}>
+        <button
+          className="secondary"
+          style={{ flex: 1, minHeight: '44px' }}
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+        <button
+          disabled={!canProceed}
+          style={{ flex: 2, minHeight: '44px' }}
+          onClick={onComplete}
+        >
+          {!allDone ? (
+            <>
+              <Loader2 size={18} className="animate-spin" /> Checking…
+            </>
+          ) : (
+            <>
+              Begin Interview <ChevronRight size={18} />
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

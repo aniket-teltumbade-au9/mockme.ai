@@ -276,27 +276,6 @@ export default function InterviewPage() {
     setIsRecording(false);
   };
 
-  const handleAftersave = async (sid: string) => {
-    setIsFinalizing(true);
-    try {
-      const fullAudioBlob = await stopFullSessionRecording();
-      const formData = new FormData();
-      formData.append("sessionId", sid);
-      formData.append("audio", fullAudioBlob, "session_audio.webm");
-      await axios.post(`${API_BASE}/interview/aftersave`, formData, { headers: authHeaders() });
-
-      setSessionIdSynced(null);
-      setIsFinalizing(false);
-
-      await fetchHistory();
-      await fetchProgress();
-    } catch (err) {
-      console.error("Aftersave failed", err);
-      alert("Failed to save recording. Please check your connection.");
-      setIsFinalizing(false);
-    }
-  };
-
   const sendAudioResponse = async (blob: Blob) => {
     const currentSessionId = sessionIdRef.current;
     if (!currentSessionId) return;
@@ -366,7 +345,7 @@ export default function InterviewPage() {
   };
 
   useEffect(() => {
-    fetchVoices();
+    setTimeout(() => fetchVoices(), 0);
     if (!isInitialized || !userId || !accessToken) return;
     (async () => {
       await fetchProgress();

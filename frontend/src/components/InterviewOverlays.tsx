@@ -28,7 +28,7 @@ export const LiveTranscript: React.FC<LiveTranscriptProps> = ({ text }) => {
       backdropFilter: "blur(8px)",
     }}>
       <MessageSquare size={14} style={{ color: "#67e8f9", marginTop: "2px", flexShrink: 0 }} />
-      <p style={{ fontSize: "0.82rem", color: "#a5f3fc", lineHeight: 1.5, margin: 0 }}>
+      <p style={{ fontSize: "0.8rem", color: "#a5f3fc", lineHeight: 1.5, margin: 0, flex: 1, minWidth: 0 }}>
         {text}
       </p>
     </div>
@@ -58,10 +58,23 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({ voices, selectedVo
       <button
         className="secondary"
         onClick={() => setOpen(o => !o)}
-        style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem", padding: "4px 10px" }}
+        style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "0.4rem", 
+          fontSize: "0.75rem", 
+          padding: "4px 10px",
+          minHeight: '36px'
+        }}
+        aria-label="Select voice"
       >
         <span>{selectedVoice.flag}</span>
-        <span style={{ maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ 
+          maxWidth: 100, 
+          overflow: "hidden", 
+          textOverflow: "ellipsis", 
+          whiteSpace: "nowrap" 
+        }}>
           {selectedVoice.name}
         </span>
         <ChevronDown size={12} />
@@ -69,10 +82,15 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({ voices, selectedVo
 
       {open && (
         <div style={{
-          position: "absolute", top: "calc(100% + 4px)", right: 0,
-          background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: "10px", width: "200px",
-          zIndex: 50, boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+          position: "absolute", 
+          top: "calc(100% + 4px)", 
+          right: 0,
+          background: "#1e293b", 
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: "10px", 
+          width: "200px",
+          zIndex: 50, 
+          boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
           overflow: "hidden",
         }}>
           {voices.map((v) => (
@@ -80,15 +98,29 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({ voices, selectedVo
               key={v.lang_code}
               onClick={() => { onSelect(v); setOpen(false); }}
               style={{
-                display: "flex", alignItems: "center", gap: "0.6rem",
-                width: "100%", textAlign: "left",
+                display: "flex", 
+                alignItems: "center", 
+                gap: "0.6rem",
+                width: "100%", 
+                textAlign: "left",
                 background: selectedVoice.lang_code === v.lang_code ? "rgba(99,102,241,0.15)" : "transparent",
-                border: "none", padding: "0.55rem 0.75rem", fontSize: "0.8rem",
-                color: "#cbd5e1", cursor: "pointer",
+                border: "none", 
+                padding: "0.5rem 0.75rem", 
+                fontSize: "0.8rem",
+                color: "#cbd5e1", 
+                cursor: "pointer",
+                minHeight: '36px'
               }}
             >
               <span style={{ fontSize: "1rem" }}>{v.flag}</span>
-              <span style={{ fontWeight: selectedVoice.lang_code === v.lang_code ? 600 : 400 }}>{v.name}</span>
+              <span style={{ 
+                fontWeight: selectedVoice.lang_code === v.lang_code ? 600 : 400,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {v.name}
+              </span>
             </button>
           ))}
         </div>
