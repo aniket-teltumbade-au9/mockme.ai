@@ -3,6 +3,25 @@ import subprocess
 import shutil
 import glob
 import re
+import uuid
+
+def sanitize_session_id(session_id: str) -> str:
+    """Validate and sanitize user-provided session IDs for safe filesystem usage."""
+    if not isinstance(session_id, str):
+        raise ValueError("Invalid session_id")
+
+    value = session_id.strip()
+    if not value:
+        raise ValueError("Invalid session_id")
+
+    # Primary expected format in this app is UUID.
+    try:
+        return str(uuid.UUID(value))
+    except ValueError:
+        # Backward-compatible safe fallback: only allow simple filename-safe tokens.
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
+            raise ValueError("Invalid session_id")
+        return value
 
 def get_storage_dir() -> str:
     """Return the absolute path to the recordings storage directory.
@@ -14,28 +33,33 @@ def get_storage_dir() -> str:
 
 def get_mic_path(session_id: str) -> str:
     """Path to the combined mic recording (built from turn clips at STATE_3)."""
-    return os.path.join(get_storage_dir(), f"{session_id}_mic.mp3")
+    safe_session_id = sanitize_session_id(session_id)
+    return os.path.join(get_storage_dir(), f"{safe_session_id}_mic.mp3")
 
 def get_tts_clip_path(session_id: str, index: int) -> str:
     """Path to a Sarah TTS response clip."""
-    return os.path.join(get_storage_dir(), f"{session_id}_sarah_{index}.mp3")
+    safe_session_id = sanitize_session_id(session_id)
+    return os.path.join(get_storage_dir(), f"{safe_session_id}_sarah_{index}.mp3")
 
 def get_turn_audio_path(session_id: str, turn_index: int) -> str:
     """Path to a user mic turn recording."""
-    return os.path.join(get_storage_dir(), f"{session_id}_turn_{turn_index}.webm")
+    safe_session_id = sanitize_session_id(session_id)
+    return os.path.join(get_storage_dir(), f"{safe_session_id}_turn_{turn_index}.webm")
 
 def get_mixed_path(session_id: str) -> str:
     """Path to the final mixed audio (mic + TTS combined)."""
-    return os.path.join(get_storage_dir(), f"{session_id}_mixed.mp3")
+    safe_session_id = sanitize_session_id(session_id)
+    return os.path.join(get_storage_dir(), f"{safe_session_id}_mixed.mp3")
 
 def concatenate_turn_audio(session_id: str) -> str:
     """Concatenate all turn audio files into one mic mp3 using ffmpeg.
     Scans the storage dir by glob to find all turn files (handles gaps from code-only turns).
     Returns the path to the combined file, or empty string on failure."""
-    output_path = get_mic_path(session_id)
+    safe_session_id = sanitize_session_id(session_id)
+    output_path = get_mic_path(safe_session_id)
 
     # Scan for existing turn files by glob (handles gaps from code-only turns)
-    pattern = os.path.join(get_storage_dir(), f"{session_id}_turn_*.webm")
+    pattern = os.path.join(get_storage_dir(), f"{safe_session_id}_turn_*.webm")
     all_turn_files = sorted(glob.glob(pattern))
     existing = [p for p in all_turn_files if os.path.exists(p)]
 
@@ -53,7 +77,7 @@ def concatenate_turn_audio(session_id: str) -> str:
     wav_dir = get_storage_dir()
     wav_files = []
     for i, webm_path in enumerate(existing):
-        wav_path = os.path.join(wav_dir, f"{session_id}_turn_{i}_temp.wav")
+        wav_path = os.path.join(wav_dir, f"{safe_session_id}_turn_{i}_temp.wav")
         cmd_convert = [
             "ffmpeg", "-y", "-i", webm_path,
             "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "1",
