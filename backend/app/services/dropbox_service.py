@@ -34,6 +34,16 @@ class DropboxService:
                 raise RuntimeError(f"Could not retrieve shared link for {path}") from e
             raise
 
+    def upload_resume(self, session_id: str, filename: str, resume_bytes: bytes) -> str:
+        """Upload a resume to Dropbox and return the shared link."""
+        path = f"/MockMe.AI/resumes/{session_id}_{filename}"
+        self.dbx.files_upload(
+            resume_bytes,
+            path,
+            mode=dropbox.files.WriteMode.overwrite,
+        )
+        return self._get_or_create_shared_link(path)
+
     def upload_interview(
         self,
         session_id: str,

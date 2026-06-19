@@ -1,5 +1,6 @@
 import os
 import random
+import json
 from groq import Groq
 from dotenv import load_dotenv
 from app.services.coding_problems import CODING_PROBLEMS, get_problem_by_id
@@ -8,35 +9,45 @@ load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-def get_random_coding_problem(user_performance: str = None, seniority: str = None, jd_level: str = None) -> dict:
+def generate_coding_problem(jd_context: str, day_number: int, performance_score: float, language: str = "javascript") -> dict:
+    """Generate a dynamic coding problem using the LLM."""
+    prompt = f"""
+    You are a technical interviewer. Generate a coding challenge based on this Job Description:
+    {jd_context}
+    
+    Context:
+    - Day: {day_number} of 100
+    - Candidate Performance Score: {performance_score}/100
+    
+    Requirement:
+    - Generate a coding challenge appropriate for this day and performance level.
+    - Focus on fundamental DSA or OOPS concepts relevant to the technologies in the JD.
+    - Provide a simple starter code snippet.
+    
+    Return JSON only:
+    {{
+      "title": "string",
+      "description": "string",
+      "difficulty": "string",
+      "starter_code": {{ "{language}": "string" }}
+    }}
     """
-    Select a random coding problem based on priority criteria.
-    
-    Args:
-        user_performance: "high", "mid", or "low"
-        seniority: candidate level
-        jd_level: job description difficulty level
-    
-    Returns:
-        A coding problem dict
-    """
-    # Map performance to priority
-    priority_map = {
-        "high": "high",
-        "mid": "medium",
-        "low": "low"
-    }
-    
-    # Determine priority based on user performance
-    priority = priority_map.get(user_performance, "high")
-    
-    # Filter problems by priority
-    filtered = [p for p in CODING_PROBLEMS if p["priority"] == priority]
-    
-    if not filtered:
-        filtered = CODING_PROBLEMS
-    
-    return random.choice(filtered)
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+    except (json.JSONDecodeError, Exception) as e:
+        print(f"Error generating coding problem: {e}")
+        # Return a simple fallback problem
+        return {
+            "title": "Reverse a String",
+            "description": "Write a function to reverse a given string.",
+            "difficulty": "Easy",
+            "starter_code": {language: "function reverseString(s) {\n  // TODO\n}"}
+        }
 
 SYSTEM_PROMPT = """
 You are Sarah, a conversational, engaging, yet rigorous Senior Engineering Manager conducting a 10-15 MINUTE interview based on the following Job Description (JD):
@@ -99,22 +110,30 @@ In communicationNotes, capture specific observations about communication quality
 hiringDecision must be null until STATE_3, then set to one of the three values.
 """
 
-def chat_with_llm(messages, jd_context="General Software Engineer", user_performance: str = None, language: str = "javascript"):
+def summarize_history(messages):
+    if len(messages) <= 12:
+        return messages
+    
+    # Keep last 12 messages, summarize the rest
+    recent = messages[-12:]
+    summary_message = {"role": "system", "content": f"Context summary: The conversation has progressed through {len(messages) - 12} previous turns. Focus on the current state and maintain consistency."}
+    return [summary_message] + recent
+
+def chat_with_llm(messages, jd_context="General Software Engineer", coding_problem: str = "", user_performance: str = None, language: str = "javascript"):
     try:
         # Use replace for the JD_TEXT to avoid conflicts with JSON braces
         formatted_prompt = SYSTEM_PROMPT.replace("{JD_TEXT}", jd_context)
         
-        # Get a random coding problem
-        problem = get_random_coding_problem(user_performance)
+        # Inject coding problem context directly
+        problem_context = f"\n\nCurrent Coding Problem for STATE_2:\n{coding_problem}" if coding_problem else ""
         
-        # Add problem context to messages if we're in STATE_2
-        problem_context = f"\n\nCurrent Coding Problem for STATE_2:\nTitle: {problem['title']}\nDescription: {problem['description']}\nDifficulty: {problem['difficulty']}"
+        summarized_messages = summarize_history(messages)
         
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": formatted_prompt + problem_context}
-            ] + messages
+            ] + summarized_messages
         )
         content = response.choices[0].message.content
         print(f"--- RAW LLM RESPONSE ---\n{content}\n------------------------")

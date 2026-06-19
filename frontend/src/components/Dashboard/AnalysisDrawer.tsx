@@ -35,6 +35,7 @@ interface AnalysisData {
         architectural?: number;
         communication?: number;
       };
+      summary?: number;
       strengths?: string[];
       communication_observations?: string[];
     };
@@ -207,34 +208,9 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
           {/* Hire Verdict */}
           {analysis.hire_verdict && (
             <section>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--foreground)' }}>
-                Hire Verdict
-              </h3>
-              <div style={{
-                padding: '1rem',
-                borderRadius: 'var(--radius-md)',
-                background: analysis.hire_verdict === 'Hire' 
-                  ? 'rgba(16, 185, 129, 0.08)' 
-                  : analysis.hire_verdict === 'No Hire'
-                  ? 'rgba(239, 68, 68, 0.08)' 
-                  : 'rgba(245, 158, 11, 0.08)',
-                border: `1px solid ${analysis.hire_verdict === 'Hire' 
-                  ? 'rgba(16, 185, 129, 0.2)' 
-                  : analysis.hire_verdict === 'No Hire'
-                  ? 'rgba(239, 68, 68, 0.2)' 
-                  : 'rgba(245, 158, 11, 0.2)'}`
-              }}>
-                <p style={{ 
-                  fontSize: '1.25rem', 
-                  fontWeight: 800,
-                  color: analysis.hire_verdict === 'Hire' 
-                    ? '#10b981' 
-                    : analysis.hire_verdict === 'No Hire'
-                    ? '#ef4444' 
-                    : '#f59e0b'
-                }}>
-                  {analysis.hire_verdict}
-                </p>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Hire Verdict</h3>
+              <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800 }}>{analysis.hire_verdict}</span>
               </div>
             </section>
           )}
@@ -242,41 +218,40 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
           {/* Overall Score */}
           {analysis.overall_score && (
             <section>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--foreground)' }}>
-                Overall Score
-              </h3>
-              <div style={{ position: 'relative', paddingTop: '0.5rem' }}>
-                <svg width="100" height="100" style={{ transform: 'rotate(-90deg)' }}>
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="transparent"
-                    stroke="rgba(255,255,255,0.1)"
-                    strokeWidth="8"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="transparent"
-                    stroke="var(--primary)"
-                    strokeWidth="8"
-                    strokeDasharray={`${analysis.overall_score * 3.6} 283`}
-                  />
-                </svg>
-                <div style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)'
-                }}>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--foreground)' }}>
-                    {analysis.overall_score}
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--foreground-muted)' }}>out of 10</div>
-                </div>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Overall Score</h3>
+              <div style={{ fontSize: '2rem', fontWeight: 800 }}>{analysis.overall_score}/100</div>
+            </section>
+          )}
+
+          {/* Communication Assessment */}
+          {analysis.communication_assessment && (
+            <section>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Communication Assessment</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <ScoreBar label="Clarity" value={analysis.communication_assessment.clarity} />
+                <ScoreBar label="Structure" value={analysis.communication_assessment.structure} />
+                <ScoreBar label="Conciseness" value={analysis.communication_assessment.conciseness} />
+                <ScoreBar label="Confidence" value={analysis.communication_assessment.confidence} />
               </div>
+              {analysis.communication_assessment.summary && (
+                <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--foreground-muted)' }}>{analysis.communication_assessment.summary}</p>
+              )}
+            </section>
+          )}
+
+          {/* Tech Dive */}
+          {analysis.states?.tech_dive && (
+            <section>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Technical Deep Dive</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--foreground-muted)' }}>{analysis.states.tech_dive.summary}</p>
+            </section>
+          )}
+
+          {/* Coding Round */}
+          {analysis.states?.coding_round && (
+            <section>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Coding Round</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--foreground-muted)' }}>{analysis.states.coding_round.feedback}</p>
             </section>
           )}
         </div>
