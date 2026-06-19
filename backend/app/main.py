@@ -150,7 +150,8 @@ async def start_session(
     session_id = str(uuid.uuid4())
     # Set JD or Topic as the context
     context = jd if jd else f"Topic-Specific Interview on: {topic}" if topic else "General Software Engineer"
-    sessions[session_id] = Session(sessionId=session_id, user_id=user_id, created_at=datetime.now(timezone.utc), topic=topic, jd=context, is_rehearsal=is_rehearsal)
+    session = Session(sessionId=session_id, user_id=user_id, created_at=datetime.now(timezone.utc), topic=topic, jd=context, is_rehearsal=is_rehearsal)
+    sessions[session_id] = session
     # ... rest of the function ...
 
     
@@ -314,41 +315,41 @@ async def respond_audio(
         ui_config['currentState'] = session.currentState
 
     if session.currentState == "STATE_2":
-            # Generate problem only if not already done
-            if "Title:" not in session.currentCodeWorkspace:
-                print(f"DEBUG: Generating dynamic coding problem for session {sessionId}")
-                problem = generate_coding_problem(session.jd or "General SWE", session.day_number, session.performance_score)
-                session.currentCodeWorkspace = f"Title: {problem['title']}\nDescription: {problem['description']}"
-                ui_config["editorConfig"] = {
-                    "language": "javascript",
-                    "codeContent": problem['starter_code'].get("javascript", "")
-                }
+        # Generate problem only if not already done
+        if "Title:" not in session.currentCodeWorkspace:
+            print(f"DEBUG: Generating dynamic coding problem for session {sessionId}")
+            problem = generate_coding_problem(session.jd or "General SWE", session.day_number, session.performance_score)
+            session.currentCodeWorkspace = f"Title: {problem['title']}\nDescription: {problem['description']}"
+            ui_config["editorConfig"] = {
+                "language": "javascript",
+                "codeContent": problem['starter_code'].get("javascript", "")
+            }
                 
-        if session.currentState == "STATE_3":
-            print(f"=== STATE_3 REACHED - Auto-finalizing session {sessionId} ===")
+    if session.currentState == "STATE_3":
+        print(f"=== STATE_3 REACHED - Auto-finalizing session {sessionId} ===")
 
-            # Generate remediation plan
-            from app.services.remediation import generate_remediation_plan
-            gaps = ui_config.get("detectedGaps", [])
-            remediation_plan = generate_remediation_plan(gaps)
+        # Generate remediation plan
+        from app.services.remediation import generate_remediation_plan
+        gaps = ui_config.get("detectedGaps", [])
+        remediation_plan = generate_remediation_plan(gaps)
 
-            await update_progress(session.user_id, sessionId, gaps, voice_script + "\n\nREMEDIATION PLAN:\n" + remediation_plan)
+        await update_progress(session.user_id, sessionId, gaps, voice_script + "\n\nREMEDIATION PLAN:\n" + remediation_plan)
 
 
-            # Build combined mic from all turn recordings
-            print(f"DEBUG: Building combined mic from turn files...")
-            combined_mic_path = concatenate_turn_audio(sessionId)
-            if combined_mic_path and os.path.exists(combined_mic_path):
-                print(f"DEBUG: Combined mic saved -> {combined_mic_path} ({os.path.getsize(combined_mic_path)} bytes)")
-                await update_session(sessionId, {
-                    "raw_mic_path": combined_mic_path,
-                    "finalized": False,
-                    "finalization_error": None,
-                })
-                background_tasks.add_task(finalize_interview_task, sessionId, combined_mic_path)
-                print(f"DEBUG: finalize_interview_task scheduled for {sessionId}")
-            else:
-                print(f"ERROR: Failed to build combined mic for session {sessionId}")
+        # Build combined mic from all turn recordings
+        print(f"DEBUG: Building combined mic from turn files...")
+        combined_mic_path = concatenate_turn_audio(sessionId)
+        if combined_mic_path and os.path.exists(combined_mic_path):
+            print(f"DEBUG: Combined mic saved -> {combined_mic_path} ({os.path.getsize(combined_mic_path)} bytes)")
+            await update_session(sessionId, {
+                "raw_mic_path": combined_mic_path,
+                "finalized": False,
+                "finalization_error": None,
+            })
+            background_tasks.add_task(finalize_interview_task, sessionId, combined_mic_path)
+            print(f"DEBUG: finalize_interview_task scheduled for {sessionId}")
+        else:
+            print(f"ERROR: Failed to build combined mic for session {sessionId}")
 
     await update_session(sessionId, {
         "history": [h.dict() if hasattr(h, 'dict') else h for h in session.history],
