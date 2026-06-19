@@ -35,6 +35,7 @@ interface AnalysisData {
         architectural?: number;
         communication?: number;
       };
+      summary?: number;
       strengths?: string[];
       communication_observations?: string[];
     };
