@@ -2,13 +2,6 @@
 import React from "react";
 import {
   X,
-  TrendingUp,
-  AlertTriangle,
-  Lightbulb,
-  Star,
-  Code,
-  MessageSquare,
-  Loader2,
 } from "lucide-react";
 
 interface CommAssessment {
@@ -24,10 +17,48 @@ interface CommAssessment {
   summary?: string;
 }
 
+interface Transformation {
+  critical_moment?: string;
+  candidate_original?: string;
+  elite_response?: string;
+  why_better?: string;
+}
+
+interface TacticalStrategy {
+  gap: string;
+  strategy: {
+    step_1_clarification: string;
+    step_2_approach: string;
+    step_3_iterate: string;
+    step_4_pressure_test: string;
+  };
+}
+
+interface BehavioralTactic {
+  tactic_name: string;
+  description: string;
+  example: string;
+}
+
+interface Resource {
+  title: string;
+  author?: string;
+  type: string;
+  url: string;
+}
+
 interface AnalysisData {
   hire_verdict?: string;
   overall_score?: number;
   communication_assessment?: CommAssessment;
+  transformations?: Transformation;
+  remediation_plan?: {
+    summary: string;
+    tactical_strategies: TacticalStrategy[];
+    behavioral_tactics: BehavioralTactic[];
+    resources: Resource[];
+    gaps_addressed: string[];
+  };
   states?: {
     tech_dive?: {
       scores?: {
@@ -106,36 +137,26 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
   
   if (!analysis) {
     return (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 100,
-            width: '100%',
-            maxWidth: '600px',
-            background: 'var(--background-alt)',
-            borderLeft: '1px solid var(--border)',
-            boxShadow: '-10px 0 50px rgba(0,0,0,0.5)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '1rem',
-            padding: '2rem',
-            margin: '1rem'
-          }}
-        >
-            <Loader2 className="animate-spin" size={48} color="var(--primary)" />
-            <h2 style={{ fontSize: '1.5rem' }}>Loading Analysis...</h2>
-            <p style={{ color: 'var(--foreground-muted)' }}>The AI is still processing your results.</p>
-            <button className="secondary" onClick={onClose} style={{ marginTop: '2rem' }}>Close</button>
-        </div>
-    )
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 100,
+        width: '100%',
+        maxWidth: '640px',
+        background: 'var(--background-alt)',
+        borderLeft: '1px solid var(--border)',
+        padding: '2rem',
+        overflowY: 'auto'
+      }}>
+        <button className="secondary" onClick={onClose} style={{ marginBottom: '1rem' }}>
+          <X size={20} /> Close
+        </button>
+        <p style={{ color: 'var(--foreground-muted)' }}>No analysis available for this interview.</p>
+      </div>
+    );
   }
-
-  const comm = analysis.communication_assessment;
 
   return (
     <div 
@@ -252,6 +273,165 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
             <section>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Coding Round</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--foreground-muted)' }}>{analysis.states.coding_round.feedback}</p>
+            </section>
+          )}
+
+          {/* Before/After Transformation */}
+          {analysis.transformations && (
+            <section style={{ padding: '1rem', background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: 'var(--radius-sm)' }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#d8b4fe' }}>🎯 Elite Answer Transformation</h3>
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.5rem' }}>Critical Moment:</div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--foreground)', fontStyle: 'italic' }}>{analysis.transformations.critical_moment}</p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fca5a5', marginBottom: '0.5rem' }}>❌ Your Original Response:</div>
+                  <div style={{ 
+                    padding: '0.75rem', 
+                    background: 'rgba(239, 68, 68, 0.1)', 
+                    borderRadius: '0.5rem',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    fontSize: '0.8rem',
+                    lineHeight: '1.4',
+                    color: 'var(--foreground-muted)',
+                    maxHeight: '200px',
+                    overflowY: 'auto'
+                  }}>
+                    {analysis.transformations.candidate_original}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#86efac', marginBottom: '0.5rem' }}>✅ Elite Staff-Level Response:</div>
+                  <div style={{ 
+                    padding: '0.75rem', 
+                    background: 'rgba(34, 197, 94, 0.1)', 
+                    borderRadius: '0.5rem',
+                    border: '1px solid rgba(34, 197, 94, 0.2)',
+                    fontSize: '0.8rem',
+                    lineHeight: '1.4',
+                    color: 'var(--foreground-muted)',
+                    maxHeight: '200px',
+                    overflowY: 'auto'
+                  }}>
+                    {analysis.transformations.elite_response}
+                  </div>
+                </div>
+              </div>
+
+              {analysis.transformations.why_better && (
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(59, 130, 246, 0.08)', borderRadius: '0.5rem', borderLeft: '3px solid #3b82f6' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#93c5fd', marginBottom: '0.5rem' }}>Why This Is Better:</div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', lineHeight: '1.5' }}>{analysis.transformations.why_better}</p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Tactical Execution Strategies */}
+          {analysis.remediation_plan?.tactical_strategies && analysis.remediation_plan.tactical_strategies.length > 0 && (
+            <section style={{ padding: '1rem', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--radius-sm)' }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#93c5fd' }}>🛠️ Tactical Execution Strategies</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginBottom: '1rem' }}>Step-by-step approach for handling similar problems next time:</p>
+              
+              {analysis.remediation_plan.tactical_strategies.map((item, idx) => (
+                <div key={idx} style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: idx < analysis.remediation_plan!.tactical_strategies.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#60a5fa', marginBottom: '0.75rem' }}>{item.gap}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>Step 1 — Clarification:</div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginLeft: '0.5rem' }}>{item.strategy.step_1_clarification}</p>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>Step 2 — Approach:</div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginLeft: '0.5rem' }}>{item.strategy.step_2_approach}</p>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>Step 3 — Iterate:</div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginLeft: '0.5rem' }}>{item.strategy.step_3_iterate}</p>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>Step 4 — Pressure Test:</div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginLeft: '0.5rem' }}>{item.strategy.step_4_pressure_test}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* Behavioral Adjustment Tools */}
+          {analysis.remediation_plan?.behavioral_tactics && analysis.remediation_plan.behavioral_tactics.length > 0 && (
+            <section style={{ padding: '1rem', background: 'rgba(249, 115, 22, 0.08)', border: '1px solid rgba(249, 115, 22, 0.2)', borderRadius: 'var(--radius-sm)' }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#fdba74' }}>🧠 Behavioral Adjustment Tools</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginBottom: '1rem' }}>Specific techniques to improve your communication:</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {analysis.remediation_plan.behavioral_tactics.map((tactic, idx) => (
+                  <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fdba74', marginBottom: '0.5rem' }}>{tactic.tactic_name}</div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', lineHeight: '1.4', marginBottom: '0.5rem' }}>{tactic.description}</p>
+                    {tactic.example && (
+                      <p style={{ fontSize: '0.7rem', color: 'var(--foreground-muted)', lineHeight: '1.3', fontStyle: 'italic', opacity: 0.8 }}>{tactic.example}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Recommended Resources */}
+          {analysis.remediation_plan?.resources && analysis.remediation_plan.resources.length > 0 && (
+            <section style={{ padding: '1rem', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: 'var(--radius-sm)' }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#86efac' }}>📚 Recommended Topics & Resources</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {analysis.remediation_plan.resources.map((resource, idx) => (
+                  <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem', borderLeft: '2px solid #10b981' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#86efac', marginBottom: '0.25rem' }}>
+                          {resource.url ? (
+                            <a href={resource.url} target="_blank" rel="noopener noreferrer" style={{ color: '#86efac', textDecoration: 'none' }}>
+                              {resource.title} ↗
+                            </a>
+                          ) : (
+                            resource.title
+                          )}
+                        </div>
+                        {resource.author && (
+                          <div style={{ fontSize: '0.7rem', color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>by {resource.author}</div>
+                        )}
+                        <div style={{ fontSize: '0.7rem', color: 'var(--foreground-muted)', opacity: 0.7 }}>
+                          <span style={{ 
+                            padding: '2px 6px', 
+                            background: 'rgba(16, 185, 129, 0.15)', 
+                            borderRadius: '4px',
+                            textTransform: 'uppercase',
+                            fontWeight: 600
+                          }}>
+                            {resource.type}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Communication Improvements */}
+          {analysis.recommended_communication_improvements && analysis.recommended_communication_improvements.length > 0 && (
+            <section style={{ padding: '1rem', background: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.2)', borderRadius: 'var(--radius-sm)' }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#f472b6' }}>💡 Communication Improvements</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {analysis.recommended_communication_improvements.map((improvement, idx) => (
+                  <div key={idx} style={{ padding: '0.5rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem', borderLeft: '2px solid #ec4899' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', lineHeight: '1.4' }}>• {improvement}</div>
+                  </div>
+                ))}
+              </div>
             </section>
           )}
         </div>

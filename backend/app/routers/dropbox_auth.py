@@ -118,6 +118,54 @@ async def get_dropbox_status(current_user: dict = Depends(get_current_user)):
         "scopes": user.get("dropbox_scope"),
     }
 
+@router.post("/refresh-token")
+async def refresh_token(current_user: dict = Depends(get_current_user)):
+    """
+    Refresh the Dropbox access token using the refresh token.
+    This endpoint should be called when the frontend receives a 401 error.
+    """
+    user_email = current_user.get("user_id")
+    refresh_token = current_user.get("dropbox_refresh_token")
+    
+    if not refresh_token:
+        raise HTTPException(status_code=400, detail="No refresh token available")
+    
+    try:
+        # Use the refresh token to get a new access token
+        dbx = dropbox.Dropbox(
+            oauth2_refresh_token=refresh_token,
+            app_key=os.getenv("DROPBOX_APP_KEY"),
+            app_secret=os.getenv("DROPBOX_APP_SECRET"),
+        )
+        
+        # Make a call to trigger the refresh
+        account = dbx.users_get_current_account()
+        
+        # Get the new access token from the SDK
+        new_access_token = getattr(dbx, '_oauth2_access_token', None)
+        
+        if new_access_token:
+            new_expiry = datetime.now(timezone.utc) + timedelta(hours=4)
+            
+            # Update the database with the new token
+            await update_user_dropbox(user_email, {
+                "dropbox_access_token": new_access_token,
+                "dropbox_token_expiry": new_expiry,
+            })
+            
+            return {
+                "success": True,
+                "access_token": new_access_token,
+                "token_expiry": new_expiry,
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Could not extract new access token")
+            
+    except dropbox.exceptions.AuthError as e:
+        raise HTTPException(status_code=401, detail=f"Failed to refresh token: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Token refresh failed: {str(e)}")
+
 @router.post("/disconnect")
 async def disconnect_dropbox(current_user: dict = Depends(get_current_user)):
     await update_user_dropbox(current_user["user_id"], {

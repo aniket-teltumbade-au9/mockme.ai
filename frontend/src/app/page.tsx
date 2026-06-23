@@ -18,6 +18,7 @@ import { InterviewHistoryCard } from "@/components/Dashboard/InterviewHistoryCar
 import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
 import { AnalysisDrawer } from "@/components/Dashboard/AnalysisDrawer";
 import { PreflightWizard } from "@/components/PreflightWizard";
+import { JDSelector } from "@/components/JDSelector";
 import { LiveTranscript, VoiceSelector, TTSVoice } from "@/components/InterviewOverlays";
 import { ProgressDashboard } from "@/components/Dashboard/ProgressDashboard";
 import { API_BASE, authHeaders } from "@/utils/apiConfig";
@@ -145,6 +146,7 @@ export default function InterviewPage() {
     }
   }, [userId]);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const fetchVoices = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/voices`);
@@ -643,7 +645,7 @@ export default function InterviewPage() {
                               setShowTranscript(true);
                             }}
                             onRetryFinalize={handleRetryAftersave}
-                            onRetryStarted={(_newSessionId, _focusGaps) => {
+                            onRetryStarted={(_newSessionId) => {
                               // Switch to focused interview and fetch history
                               setSessionIdSynced(_newSessionId);
                               setShowJDScreen(false);
@@ -692,22 +694,10 @@ export default function InterviewPage() {
             </div>
           ) : (
             <div className="glass-panel" style={{ maxWidth: "600px", width: "90%" }}>
-              <h2 style={{ marginBottom: "1rem" }}>Target Job Description</h2>
-              <textarea
-                value={jd}
-                onChange={(e) => setJd(e.target.value)}
-                placeholder="Paste the Job Description here. Sarah will tailor the interview to these requirements..."
-                style={{
-                  width: "100%",
-                  height: "200px",
-                  background: "var(--secondary)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "12px",
-                  padding: "1rem",
-                  color: "white",
-                  marginBottom: "1.5rem",
-                }}
-              />
+              <h2 style={{ marginBottom: "1.5rem" }}>Interview Setup</h2>
+              
+              <JDSelector value={jd} onChange={setJd} />
+              
               <div style={{ marginBottom: "1.5rem" }}>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>
                   Resume (PDF/Docx)
