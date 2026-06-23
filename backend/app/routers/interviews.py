@@ -98,6 +98,12 @@ async def finalize_interview_task(session_id: str, mic_path_override: str | None
     print(f"DEBUG: Building analysis via Groq...")
     try:
         analysis_payload = await build_groq_session_analysis(session)
+        
+        # Add remediation plan if it exists in session
+        if session.get("remediation_plan"):
+            analysis_payload["remediation_plan"] = session["remediation_plan"]
+            print(f"DEBUG: Added remediation_plan to analysis")
+        
         print(f"DEBUG: Analysis built successfully")
     except Exception as e:
         print(f"ANALYSIS ERROR: {e}")

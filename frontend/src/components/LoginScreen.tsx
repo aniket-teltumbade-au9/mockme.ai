@@ -1,12 +1,10 @@
 "use client";
 import { useState } from "react";
 import axios from "axios";
-import { useAuth } from "@/context/AuthContext";
 import { API_BASE } from "@/utils/apiConfig";
 import { LogIn, Loader2, Sparkles, ShieldCheck } from "lucide-react";
 
 export const LoginScreen = () => {
-  const { setUserId } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const loginWithDropbox = async () => {

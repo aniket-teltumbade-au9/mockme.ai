@@ -18,7 +18,9 @@ import { InterviewHistoryCard } from "@/components/Dashboard/InterviewHistoryCar
 import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
 import { AnalysisDrawer } from "@/components/Dashboard/AnalysisDrawer";
 import { PreflightWizard } from "@/components/PreflightWizard";
+import { JDSelector } from "@/components/JDSelector";
 import { LiveTranscript, VoiceSelector, TTSVoice } from "@/components/InterviewOverlays";
+import { ProgressDashboard } from "@/components/Dashboard/ProgressDashboard";
 import { API_BASE, authHeaders } from "@/utils/apiConfig";
 import { useAuth } from "@/context/AuthContext";
 import { LoginScreen } from "@/components/LoginScreen";
@@ -122,6 +124,7 @@ export default function InterviewPage() {
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [dashboardTab, setDashboardTab] = useState<"history" | "progress">("history");
 
   const fetchProgress = useCallback(async () => {
     if (!userId) return;
@@ -143,6 +146,7 @@ export default function InterviewPage() {
     }
   }, [userId]);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const fetchVoices = useCallback(async () => {
     try {
       const res = await axios.get(`${API_BASE}/voices`);
@@ -178,14 +182,15 @@ export default function InterviewPage() {
   };
 
   // Called when preflight wizard gives the all-clear
-  const handlePreflightComplete = async (topic: string, isRehearsal: boolean) => {
+  const handlePreflightComplete = async (topic: string, isRehearsal: boolean, jd?: string) => {
     setShowPreflight(false);
-    if (!pendingJd) return;
+    const finalJd = jd || pendingJd;
+    if (!finalJd) return;
     setIsLoading(true);
     setErrorMsg(null);
     try {
       const formData = new FormData();
-      formData.append("jd", pendingJd);
+      formData.append("jd", finalJd);
       if (topic) formData.append("topic", topic);
       formData.append("is_rehearsal", isRehearsal.toString());
       if (selectedPersona.id) formData.append("persona", selectedPersona.id);
@@ -560,65 +565,114 @@ export default function InterviewPage() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     marginBottom: "1.5rem",
+                    borderBottom: "1px solid var(--border)",
                   }}
                 >
-                  <h3 style={{ fontSize: "1.25rem", fontWeight: 800 }}>Interview History</h3>
-                  <div
-                    style={{
-                      fontSize: "0.8rem",
-                      color: "var(--foreground-muted)",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {interviewHistory.length} Recorded Sessions
-                  </div>
-                </div>
-                <div
-                  style={{
-                    maxHeight: "400px",
-                    overflowY: "auto",
-                    paddingRight: "0.75rem",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.5rem",
-                  }}
-                >
-                  {interviewHistory.length > 0 ? (
-                    interviewHistory.map((inv) => (
-                      <InterviewHistoryCard
-                        key={inv.sessionId}
-                        interview={inv}
-                        onPlayAudio={(i) => {
-                          setSelectedInterview(i);
-                          setShowAudioPlayer(true);
-                        }}
-                        onViewAnalysis={(i) => {
-                          setSelectedInterview(i);
-                          setShowAnalysis(true);
-                        }}
-                        onViewTranscript={(i) => {
-                          setSelectedInterview(i);
-                          setShowTranscript(true);
-                        }}
-                        onRetryFinalize={handleRetryAftersave}
-                      />
-                    ))
-                  ) : (
-                    <div
+                  <h3 style={{ fontSize: "1.25rem", fontWeight: 800 }}>Performance & History</h3>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      onClick={() => setDashboardTab("history")}
                       style={{
-                        textAlign: "center",
-                        padding: "3rem",
-                        background: "rgba(255,255,255,0.02)",
-                        borderRadius: "var(--radius-lg)",
-                        border: "1px dashed var(--border)",
-                        color: "var(--foreground-muted)",
-                        fontStyle: "italic",
+                        padding: "0.5rem 1rem",
+                        background: dashboardTab === "history" ? "rgba(129, 140, 248, 0.2)" : "transparent",
+                        border: dashboardTab === "history" ? "1px solid #818cf8" : "1px solid transparent",
+                        borderRadius: "8px",
+                        color: dashboardTab === "history" ? "#818cf8" : "var(--foreground-muted)",
+                        cursor: "pointer",
+                        fontSize: "0.9rem",
+                        fontWeight: dashboardTab === "history" ? 600 : 400,
+                        transition: "all 0.2s",
                       }}
                     >
-                      No previous sessions found.
-                    </div>
-                  )}
+                      History
+                    </button>
+                    <button
+                      onClick={() => setDashboardTab("progress")}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        background: dashboardTab === "progress" ? "rgba(129, 140, 248, 0.2)" : "transparent",
+                        border: dashboardTab === "progress" ? "1px solid #818cf8" : "1px solid transparent",
+                        borderRadius: "8px",
+                        color: dashboardTab === "progress" ? "#818cf8" : "var(--foreground-muted)",
+                        cursor: "pointer",
+                        fontSize: "0.9rem",
+                        fontWeight: dashboardTab === "progress" ? 600 : 400,
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      Progress & Analytics
+                    </button>
+                  </div>
                 </div>
+
+                {dashboardTab === "history" ? (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "0.8rem",
+                        color: "var(--foreground-muted)",
+                        fontWeight: 500,
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      {interviewHistory.length} Recorded Sessions
+                    </div>
+                    <div
+                      style={{
+                        maxHeight: "400px",
+                        overflowY: "auto",
+                        paddingRight: "0.75rem",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      {interviewHistory.length > 0 ? (
+                        interviewHistory.map((inv) => (
+                          <InterviewHistoryCard
+                            key={inv.sessionId}
+                            interview={inv}
+                            onPlayAudio={(i) => {
+                              setSelectedInterview(i);
+                              setShowAudioPlayer(true);
+                            }}
+                            onViewAnalysis={(i) => {
+                              setSelectedInterview(i);
+                              setShowAnalysis(true);
+                            }}
+                            onViewTranscript={(i) => {
+                              setSelectedInterview(i);
+                              setShowTranscript(true);
+                            }}
+                            onRetryFinalize={handleRetryAftersave}
+                            onRetryStarted={(_newSessionId) => {
+                              // Switch to focused interview and fetch history
+                              setSessionIdSynced(_newSessionId);
+                              setShowJDScreen(false);
+                              fetchHistory();
+                            }}
+                          />
+                        ))
+                      ) : (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "3rem",
+                            background: "rgba(255,255,255,0.02)",
+                            borderRadius: "var(--radius-lg)",
+                            border: "1px dashed var(--border)",
+                            color: "var(--foreground-muted)",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          No previous sessions found.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <ProgressDashboard />
+                )}
               </div>
 
               <button
@@ -640,22 +694,10 @@ export default function InterviewPage() {
             </div>
           ) : (
             <div className="glass-panel" style={{ maxWidth: "600px", width: "90%" }}>
-              <h2 style={{ marginBottom: "1rem" }}>Target Job Description</h2>
-              <textarea
-                value={jd}
-                onChange={(e) => setJd(e.target.value)}
-                placeholder="Paste the Job Description here. Sarah will tailor the interview to these requirements..."
-                style={{
-                  width: "100%",
-                  height: "200px",
-                  background: "var(--secondary)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "12px",
-                  padding: "1rem",
-                  color: "white",
-                  marginBottom: "1.5rem",
-                }}
-              />
+              <h2 style={{ marginBottom: "1.5rem" }}>Interview Setup</h2>
+              
+              <JDSelector value={jd} onChange={setJd} />
+              
               <div style={{ marginBottom: "1.5rem" }}>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>
                   Resume (PDF/Docx)

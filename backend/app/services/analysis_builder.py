@@ -59,8 +59,13 @@ The output MUST be a strict JSON object following this schema exactly:
   "skill_gaps": ["string"],
   "communication_gaps": ["string"],
   "recommended_topics": ["string"],
-  "recommended_communication_improvements": ["string"]
-}
+  "recommended_communication_improvements": ["string"],
+  "transformations": {
+    "critical_moment": "string (one place where candidate stumbled most)",
+    "candidate_original": "string (candidate's actual response from transcript, truncated to 200 words)",
+    "elite_response": "string (staff-level, production-grade response to the same question/scenario, 200-300 words)",
+    "why_better": "string (explain the 2-3 key differences that make the elite response stronger)"
+  }
 
 Scoring rubric for communication sub-scores (0-10):
 - 0-3: Poor — unclear, unstructured, or off-topic
@@ -68,8 +73,15 @@ Scoring rubric for communication sub-scores (0-10):
 - 7-8: Good — clear and structured with minor gaps
 - 9-10: Excellent — precise, confident, and well-articulated
 
+For transformations:
+- Identify ONE critical moment where the candidate's answer was weak or showed a gap
+- Extract their actual response from the transcript (the exact words or paraphrase)
+- Create an elite, staff-level rewrite of that same response
+- Explain what makes the elite version better (structure, depth, clarity, etc.)
+
 Base ALL scores on evidence from the actual transcript. Do not invent observations.
 If a section did not occur (e.g. coding round was skipped), use null for that state's fields.
+If transformations cannot be generated (all answers perfect, no clear stumbles), set transformations to null.
 """
 
 async def build_groq_session_analysis(session_data):

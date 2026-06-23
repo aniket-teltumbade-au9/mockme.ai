@@ -71,9 +71,65 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 function AxiosInterceptor({ children, setSessionExpired }: { children: ReactNode, setSessionExpired: (v: boolean) => void }) {
   useEffect(() => {
+    let isRefreshing = false;
+    let failedQueue: Array<(token: string) => void> = [];
+
+    const processQueue = (token: string | null) => {
+      failedQueue.forEach(prom => {
+        if (token) prom(token);
+      });
+      failedQueue = [];
+    };
+
     const interceptor = axios.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
+        const originalRequest = error.config;
+
+        // Handle 401 - try to refresh token
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          if (isRefreshing) {
+            // Wait for refresh to complete
+            return new Promise((resolve) => {
+              failedQueue.push((token: string) => {
+                originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                resolve(axios(originalRequest));
+              });
+            });
+          }
+
+          isRefreshing = true;
+          originalRequest._retry = true;
+
+          try {
+            // Try to refresh the token
+            const refreshRes = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/dropbox/refresh-token`, {}, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem('dropbox_access_token')}`
+              }
+            });
+
+            const newToken = refreshRes.data.access_token;
+            localStorage.setItem('dropbox_access_token', newToken);
+
+            // Update the failed request with new token
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+
+            isRefreshing = false;
+            processQueue(newToken);
+
+            return axios(originalRequest);
+          } catch (refreshError) {
+            // Refresh failed - user needs to re-authenticate
+            isRefreshing = false;
+            processQueue(null);
+            setSessionExpired(true);
+            localStorage.removeItem('dropbox_access_token');
+            localStorage.removeItem('auth_user_id');
+            return Promise.reject(refreshError);
+          }
+        }
+
         if (error.response?.status === 401) {
           setSessionExpired(true);
         }

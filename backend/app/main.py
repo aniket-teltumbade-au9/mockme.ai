@@ -34,7 +34,7 @@ from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_pat
 from app.services.voice_service import get_or_refresh_voices
 from app.services.dropbox_service import DropboxService
 
-from app.routers import dropbox_auth, interviews, code_runner
+from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin
 from app.routers.interviews import finalize_interview_task
 
 @asynccontextmanager
@@ -55,6 +55,10 @@ app.add_middleware(
 app.include_router(dropbox_auth.router)
 app.include_router(interviews.router)
 app.include_router(code_runner.router)
+app.include_router(jd_samples.router)
+app.include_router(progress.router)
+app.include_router(focused_sessions.router)
+app.include_router(admin.router)
 
 # In-memory session store
 sessions = {}
@@ -333,7 +337,12 @@ async def respond_audio(
         gaps = ui_config.get("detectedGaps", [])
         remediation_plan = generate_remediation_plan(gaps)
 
-        await update_progress(session.user_id, sessionId, gaps, voice_script + "\n\nREMEDIATION PLAN:\n" + remediation_plan)
+        # Store remediation plan in session for frontend access
+        await update_session(sessionId, {
+            "remediation_plan": remediation_plan
+        })
+
+        await update_progress(session.user_id, sessionId, gaps, voice_script)
 
 
         # Build combined mic from all turn recordings
@@ -477,7 +486,12 @@ async def respond_code(
         gaps = ui_config.get("detectedGaps", [])
         remediation_plan = generate_remediation_plan(gaps)
 
-        await update_progress(session.user_id, sessionId, gaps, voice_script + "\n\nREMEDIATION PLAN:\n" + remediation_plan)
+        # Store remediation plan in session for frontend access
+        await update_session(sessionId, {
+            "remediation_plan": remediation_plan
+        })
+
+        await update_progress(session.user_id, sessionId, gaps, voice_script)
 
         # Build combined mic from all turn recordings
         combined_mic_path = concatenate_turn_audio(sessionId)

@@ -9,7 +9,6 @@ import {
   Mic,
   Database,
   Cloud,
-  Settings2
 } from "lucide-react";
 import axios from "axios";
 
@@ -164,7 +163,6 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
   }, [userId]);
 
   const canProceed = useMemo(() => {
-    const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
     const allDone = steps.every(
       (s) => s.status !== "loading" && s.status !== "pending",
     );
@@ -196,6 +194,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         <p style={{ color: "var(--foreground-muted)", fontSize: "0.95rem" }}>
           Ensuring everything is ready for your session.
         </p>
+        
         <div style={{ marginTop: '1rem' }}>
           <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', fontWeight: 600 }}>Topic (Optional)</label>
           <input 
