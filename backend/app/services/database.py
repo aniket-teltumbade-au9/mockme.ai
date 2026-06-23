@@ -99,12 +99,28 @@ async def save_interview_session(session_data):
     session_data["created_at"] = datetime.now(timezone.utc)
     await db.interviews.insert_one(session_data)
 
-async def update_progress(user_id: str, session_id: str, gaps: list, feedback: str):
+async def update_progress(user_id: str, session_id: str, gaps: list, feedback: str, performance_score: float = 0.0, hire_verdict: str = None):
     # Fetch existing data
     existing = await db.progress.find_one({"user_id": user_id})
     
+    # Fetch session details to get performance score
+    session = await db.interviews.find_one({"sessionId": session_id})
+    session_score = session.get("performance_score", performance_score) if session else performance_score
+    session_verdict = hire_verdict or (session.get("analysis", {}).get("hire_verdict") if session else None)
+    session_created = session.get("created_at") if session else datetime.now(timezone.utc)
+    
     # Structure for the new snapshot
     new_snapshot = {"timestamp": datetime.now(timezone.utc), "gaps": gaps}
+    
+    # Session summary with gap resolution info
+    session_summary = {
+        "session_id": session_id,
+        "created_at": session_created,
+        "gaps": gaps,
+        "performance_score": session_score,
+        "hire_verdict": session_verdict,
+        "resolved_in_session": None,  # Will be updated when resolved
+    }
     
     # Update logic
     await db.progress.update_one(
@@ -113,9 +129,29 @@ async def update_progress(user_id: str, session_id: str, gaps: list, feedback: s
             "$inc": {"total_interviews": 1},
             "$push": {
                 "history": {"session_id": session_id, "date": datetime.now(timezone.utc), "feedback": feedback},
-                "skill_gaps_history": new_snapshot
+                "skill_gaps_history": new_snapshot,
+                "session_summaries": session_summary,
             },
             "$set": {"skill_gaps": list(set((existing.get("skill_gaps", []) if existing else []) + gaps))}
         },
         upsert=True
     )
+    
+    # Check if any previous session gaps were resolved
+    if existing:
+        session_summaries = existing.get("session_summaries", [])
+        for idx, prev_summary in enumerate(session_summaries):
+            prev_gaps = set(prev_summary.get("gaps", []))
+            current_gaps = set(gaps)
+            
+            # Find gaps that were in previous but not in current (resolved)
+            resolved = prev_gaps - current_gaps
+            if resolved and not prev_summary.get("resolved_in_session"):
+                # Mark previous session as having resolved gaps
+                await db.progress.update_one(
+                    {"user_id": user_id},
+                    {
+                        "$set": {f"session_summaries.{idx}.resolved_in_session": session_id}
+                    }
+                )
+

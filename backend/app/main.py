@@ -34,7 +34,7 @@ from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_pat
 from app.services.voice_service import get_or_refresh_voices
 from app.services.dropbox_service import DropboxService
 
-from app.routers import dropbox_auth, interviews, code_runner
+from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions
 from app.routers.interviews import finalize_interview_task
 
 @asynccontextmanager
@@ -55,6 +55,9 @@ app.add_middleware(
 app.include_router(dropbox_auth.router)
 app.include_router(interviews.router)
 app.include_router(code_runner.router)
+app.include_router(jd_samples.router)
+app.include_router(progress.router)
+app.include_router(focused_sessions.router)
 
 # In-memory session store
 sessions = {}

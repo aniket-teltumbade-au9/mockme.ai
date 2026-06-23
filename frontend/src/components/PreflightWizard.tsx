@@ -9,11 +9,11 @@ import {
   Mic,
   Database,
   Cloud,
-  Settings2
 } from "lucide-react";
 import axios from "axios";
 
 import { API_BASE, authHeaders } from "@/utils/apiConfig";
+import { useJDSamples } from "@/hooks/useJDSamples";
 
 type StepStatus = "pending" | "loading" | "ok" | "warn" | "error";
 
@@ -28,7 +28,7 @@ interface Step {
 
 interface PreflightWizardProps {
   userId: string;
-  onComplete: (topic: string, isRehearsal: boolean) => void;
+  onComplete: (topic: string, isRehearsal: boolean, jd?: string) => void;
   onCancel: () => void;
 }
 
@@ -60,6 +60,10 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
   const [dropboxWarningAcked, setDropboxWarningAcked] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState("");
   const [isRehearsal, setIsRehearsal] = useState(false);
+  const [jdInputMode, setJdInputMode] = useState<"custom" | "template">("custom");
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [customJD, setCustomJD] = useState("");
+  const { samples: jdSamples, loading: jdLoading } = useJDSamples(50);
 
   const patchStep = (id: string, patch: Partial<Step>) =>
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -164,7 +168,6 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
   }, [userId]);
 
   const canProceed = useMemo(() => {
-    const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
     const allDone = steps.every(
       (s) => s.status !== "loading" && s.status !== "pending",
     );
@@ -196,6 +199,79 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         <p style={{ color: "var(--foreground-muted)", fontSize: "0.95rem" }}>
           Ensuring everything is ready for your session.
         </p>
+        
+        {/* JD Selection Section */}
+        <div style={{ marginTop: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.75rem', fontWeight: 600 }}>Job Description</label>
+          
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <button
+              className={jdInputMode === "custom" ? "primary" : "secondary"}
+              style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
+              onClick={() => setJdInputMode("custom")}
+            >
+              Custom Input
+            </button>
+            <button
+              className={jdInputMode === "template" ? "primary" : "secondary"}
+              style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
+              onClick={() => setJdInputMode("template")}
+            >
+              Use Template
+            </button>
+          </div>
+
+          {jdInputMode === "custom" ? (
+            <textarea 
+              value={customJD}
+              onChange={(e) => setCustomJD(e.target.value)}
+              placeholder="Paste the job description here (or leave empty for general interview)"
+              style={{ 
+                width: '100%', 
+                padding: '0.75rem', 
+                borderRadius: '8px', 
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--border)',
+                color: 'white',
+                fontFamily: 'monospace',
+                fontSize: '0.8rem',
+                minHeight: '100px',
+                resize: 'vertical'
+              }}
+            />
+          ) : (
+            <div>
+              {jdLoading ? (
+                <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--foreground-muted)' }}>
+                  <Loader2 size={18} className="animate-spin" style={{ display: 'inline', marginRight: '0.5rem' }} />
+                  Loading templates…
+                </div>
+              ) : (
+                <select 
+                  value={selectedTemplate}
+                  onChange={(e) => setSelectedTemplate(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.75rem', 
+                    borderRadius: '8px', 
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid var(--border)',
+                    color: 'white',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  <option value="">-- Select a template --</option>
+                  {jdSamples.map((sample) => (
+                    <option key={sample.id} value={sample.description}>
+                      Day {sample.day_number}: {sample.role} ({sample.metadata.experience})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </div>
+
         <div style={{ marginTop: '1rem' }}>
           <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', fontWeight: 600 }}>Topic (Optional)</label>
           <input 
@@ -344,7 +420,10 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         <button
           disabled={!canProceed}
           style={{ flex: 2, minHeight: '44px' }}
-          onClick={() => onComplete(selectedTopic, isRehearsal)}
+          onClick={() => {
+            const jd = jdInputMode === "custom" ? customJD : selectedTemplate;
+            onComplete(selectedTopic, isRehearsal, jd);
+          }}
         >
           {!allDone ? (
             <>
