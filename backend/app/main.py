@@ -108,6 +108,12 @@ async def user_progress(current_user: dict = Depends(get_current_user)):
 async def interview_history(current_user: dict = Depends(get_current_user)):
     return await get_user_interviews(current_user["user_id"])
 
+@app.get("/api/user/resume")
+async def get_resume(current_user: dict = Depends(get_current_user)):
+    """Retrieve the currently stored resume for the user."""
+    resume = await get_user_resume(current_user["user_id"])
+    return resume or {"resume_url": None, "resume_filename": None}
+
 @app.get("/api/voices")
 async def list_voices():
     voices = await get_or_refresh_voices()
@@ -134,6 +140,17 @@ async def text_to_speech(
         return Response(status_code=204)
     return Response(content=audio_bytes, media_type="audio/mpeg")
 
+from app.services.database import db, get_user_interviews, get_user_progress, can_start_interview, save_interview_session, update_progress, update_session, test_db_connection, get_user_resume, set_user_resume
+
+# ... (keep existing imports and DEFAULT_PERSONAS, DEFAULT_INTERVIEW_STRUCTURE)
+# ... (keep app definition and middleware)
+
+# ... (keep existing routers inclusion)
+
+# ... (keep sessions store and audio duration helpers)
+
+# ... (keep health, user_progress, interview_history, list_voices, text_to_speech)
+
 @app.post("/api/session/start")
 async def start_session(
     jd: Optional[str] = Form(None),
@@ -156,23 +173,34 @@ async def start_session(
     context = jd if jd else f"Topic-Specific Interview on: {topic}" if topic else "General Software Engineer"
     session = Session(sessionId=session_id, user_id=user_id, created_at=datetime.now(timezone.utc), topic=topic, jd=context, is_rehearsal=is_rehearsal)
     sessions[session_id] = session
-    # ... rest of the function ...
 
-    
-    # Handle resume upload to Dropbox if provided
+    # --- Resume Handling (Vault) ---
     resume_url = None
+    resume_filename = None
+
     if resume:
+        # New resume uploaded: save to Dropbox and then to User Profile
         if current_user.get("dropbox_refresh_token"):
             try:
                 service = DropboxService(current_user["dropbox_refresh_token"])
                 resume_bytes = await resume.read()
                 resume_url = service.upload_resume(session_id, resume.filename, resume_bytes)
-                print(f"DEBUG: Resume uploaded to Dropbox: {resume_url}")
+                resume_filename = resume.filename
+                # Persist to User Profile
+                await set_user_resume(user_id, resume_url, resume_filename)
+                print(f"DEBUG: New resume uploaded and persisted to profile: {resume_url}")
             except Exception as e:
                 print(f"ERROR uploading resume to Dropbox: {e}")
         else:
             print("WARN: Resume provided but no Dropbox token")
-    
+    else:
+        # No new resume: check User Profile for a stored one
+        stored_resume = await get_user_resume(user_id)
+        if stored_resume:
+            resume_url = stored_resume["resume_url"]
+            resume_filename = stored_resume["resume_filename"]
+            print(f"DEBUG: Using persisted resume from profile: {resume_url}")
+
     # Store session metadata
     session.currentCodeWorkspace = jd
     session.persona = persona

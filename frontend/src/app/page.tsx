@@ -970,10 +970,12 @@ export default function InterviewPage() {
                       </div>
                       <h3 style={{ fontSize: "1.25rem" }}>Interview Complete</h3>
                       <button
-                        onClick={() => window.location.reload()}
+                        onClick={() => {
+                          window.location.href = "/";
+                        }}
                         style={{ minWidth: "200px" }}
                       >
-                        Return to Dashboard
+                        View My Performance Analysis
                       </button>
                     </div>
                   )}
