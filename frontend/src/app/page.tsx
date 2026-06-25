@@ -210,6 +210,12 @@ export default function InterviewPage() {
       setSessionIdSynced(res.data.sessionId);
       setUiConfigSynced(res.data.uiConfig);
 
+      // Reset pending resume after successful session start
+      setPendingResume(null);
+      // Re-fetch progress and history to ensure latest data, including resume status
+      await fetchProgress();
+      await fetchHistory();
+
       // Start the long-running full-session recorder (runs for the entire interview)
       try {
         await startFullSessionRecording();
