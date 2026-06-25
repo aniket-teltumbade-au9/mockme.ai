@@ -93,6 +93,8 @@ export default function InterviewPage() {
   const [showPreflight, setShowPreflight] = useState(false);
   const [pendingJd, setPendingJd] = useState<string | null>(null);
   const [pendingResume, setPendingResume] = useState<File | null>(null);
+  const [storedResumeUrl, setStoredResumeUrl] = useState<string | null>(null);
+  const [storedResumeFilename, setStoredResumeFilename] = useState<string | null>(null);
 
   // Live transcript (last thing Sarah said)
   const [lastSarahText, setLastSarahText] = useState<string | null>(null);
@@ -367,6 +369,14 @@ export default function InterviewPage() {
     (async () => {
       await fetchProgress();
       await fetchHistory();
+      // Fetch stored resume
+      try {
+        const res = await axios.get(`${API_BASE}/user/resume`, { headers: authHeaders() });
+        setStoredResumeUrl(res.data.resume_url);
+        setStoredResumeFilename(res.data.resume_filename);
+      } catch (err) {
+        console.error("Failed to fetch stored resume", err);
+      }
     })();
   }, [fetchProgress, fetchHistory, fetchVoices, accessToken, isInitialized, userId]);
 
@@ -702,19 +712,50 @@ export default function InterviewPage() {
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>
                   Resume (PDF/Docx)
                 </label>
-                <input
-                  type="file"
-                  onChange={(e) => setPendingResume(e.target.files?.[0] || null)}
-                  style={{
-                    width: "100%",
+                {(pendingResume || storedResumeFilename) ? (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
                     background: "var(--secondary)",
                     border: "1px solid var(--border)",
                     borderRadius: "12px",
                     padding: "0.75rem 1rem",
                     color: "white",
                     fontSize: "0.9rem",
-                  }}
-                />
+                  }}>
+                    <CheckCircle2 size={20} color="var(--accent)" />
+                    <span>{pendingResume?.name || storedResumeFilename}</span>
+                    <button
+                      onClick={() => setPendingResume(null)}
+                      className="secondary"
+                      style={{
+                        marginLeft: 'auto',
+                        padding: '0.25rem 0.75rem',
+                        fontSize: '0.8rem',
+                        minHeight: 'auto',
+                        lineHeight: '1',
+                      }}
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => setPendingResume(e.target.files?.[0] || null)}
+                    style={{
+                      width: "100%",
+                      background: "var(--secondary)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "12px",
+                      padding: "0.75rem 1rem",
+                      color: "white",
+                      fontSize: "0.9rem",
+                    }}
+                  />
+                )}
               </div>
               <div style={{ marginBottom: "1.5rem" }}>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>
