@@ -37,13 +37,13 @@ export function useJDSamples(limit: number = 50): UseJDSamplesReturn {
         
         // Fetch samples
         const samplesResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/jd-samples?limit=${limit}`
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/jd-samples?limit=${limit}`
         );
         setSamples(samplesResponse.data);
 
         // Fetch count
         const countResponse = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/jd-samples/count/total`
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/jd-samples/count/total`
         );
         setTotalCount(countResponse.data.total);
       } catch (err) {
