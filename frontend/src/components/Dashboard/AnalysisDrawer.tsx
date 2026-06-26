@@ -2,6 +2,7 @@
 import React from "react";
 import {
   X,
+  CheckCircle2,
 } from "lucide-react";
 
 interface CommAssessment {
@@ -47,7 +48,22 @@ interface Resource {
   url: string;
 }
 
+interface StarScores {
+  situation?: boolean;
+  task?: boolean;
+  action?: boolean;
+  result?: boolean;
+}
+
+interface BehavioralStarItem {
+  question?: string;
+  scores: StarScores;
+  feedback?: string;
+  tutor_tip?: string;
+}
+
 interface AnalysisData {
+  behavioral_star_analysis: BehavioralStarItem[];
   hire_verdict?: string;
   overall_score?: number;
   communication_assessment?: CommAssessment;
@@ -224,7 +240,6 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
         flex: 1,
         maxHeight: 'calc(100vh - 120px)'
       }}>
-        {/* Content would go here - keeping existing structure but with mobile fixes */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Hire Verdict */}
           {analysis.hire_verdict && (
@@ -334,8 +349,8 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
             <section style={{ padding: '1rem', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: 'var(--radius-sm)' }}>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#d8b4fe' }}>🧠 Behavioral STAR Analysis</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {analysis.behavioral_star_analysis.map((item, idx) => (
-                  <div key={idx} style={{ paddingBottom: '1.5rem', borderBottom: idx < analysis.behavioral_star_analysis!.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                {analysis.behavioral_star_analysis.map((item: BehavioralStarItem, idx: number) => (
+                  <div key={idx} style={{ paddingBottom: '1.5rem', borderBottom: idx < analysis.behavioral_star_analysis.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '0.75rem' }}>{item.question}</div>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -367,13 +382,12 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
           )}
 
           {/* Tactical Execution Strategies */}
-
           {analysis.remediation_plan?.tactical_strategies && analysis.remediation_plan.tactical_strategies.length > 0 && (
             <section style={{ padding: '1rem', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--radius-sm)' }}>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#93c5fd' }}>🛠️ Tactical Execution Strategies</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginBottom: '1rem' }}>Step-by-step approach for handling similar problems next time:</p>
               
-              {analysis.remediation_plan.tactical_strategies.map((item, idx) => (
+              {analysis.remediation_plan.tactical_strategies.map((item: TacticalStrategy, idx: number) => (
                 <div key={idx} style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: idx < analysis.remediation_plan!.tactical_strategies.length - 1 ? '1px solid var(--border)' : 'none' }}>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#60a5fa', marginBottom: '0.75rem' }}>{item.gap}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -406,7 +420,7 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
               <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginBottom: '1rem' }}>Specific techniques to improve your communication:</p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {analysis.remediation_plan.behavioral_tactics.map((tactic, idx) => (
+                {analysis.remediation_plan.behavioral_tactics.map((tactic: BehavioralTactic, idx: number) => (
                   <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fdba74', marginBottom: '0.5rem' }}>{tactic.tactic_name}</div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', lineHeight: '1.4', marginBottom: '0.5rem' }}>{tactic.description}</p>
@@ -424,7 +438,7 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
             <section style={{ padding: '1rem', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: 'var(--radius-sm)' }}>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#86efac' }}>📚 Recommended Topics & Resources</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {analysis.remediation_plan.resources.map((resource, idx) => (
+                {analysis.remediation_plan.resources.map((resource: Resource, idx: number) => (
                   <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem', borderLeft: '2px solid #10b981' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>
@@ -464,7 +478,7 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
             <section style={{ padding: '1rem', background: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.2)', borderRadius: 'var(--radius-sm)' }}>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#f472b6' }}>💡 Communication Improvements</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {analysis.recommended_communication_improvements.map((improvement, idx) => (
+                {analysis.recommended_communication_improvements.map((improvement: string, idx: number) => (
                   <div key={idx} style={{ padding: '0.5rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem', borderLeft: '2px solid #ec4899' }}>
                     <div style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', lineHeight: '1.4' }}>• {improvement}</div>
                   </div>
