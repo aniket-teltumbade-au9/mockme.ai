@@ -7,7 +7,7 @@ env/
 lib/
 lib64/
 *.md
-
+.plan/
 # Environment variables
 .env
 .env.local
