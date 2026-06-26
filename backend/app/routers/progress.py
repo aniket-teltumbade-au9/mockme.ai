@@ -64,12 +64,28 @@ async def get_detailed_progress(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch progress: {str(e)}")
 
-@router.get("")
-async def get_progress(current_user: dict = Depends(get_current_user)):
-    """Get basic progress summary."""
-    user_id = current_user["user_id"]
-    progress = await get_user_progress(user_id)
-    return progress
+@router.get("/heatmap")
+async def get_progress_heatmap(current_user: dict = Depends(get_current_user)):
+    """Return skill progress heatmap data for the user."""
+    # Aggregating categories/gaps from recent interviews
+    pipeline = [
+        {"$match": {"user_id": current_user["user_id"], "finalized": True}},
+        {"$sort": {"created_at": -1}},
+        {"$limit": 3},
+        {"$unwind": "$analysis.skill_gaps"}, 
+        {"$group": {
+            "_id": "$analysis.skill_gaps",
+            "score": {"$avg": "$performance_score"}
+        }},
+        {"$project": {
+            "category": "$_id",
+            "score": 1,
+            "_id": 0
+        }}
+    ]
+    
+    results = await db.interviews.aggregate(pipeline).to_list(length=100)
+    return {"data": results}
 
 def _was_gap_resolved(gap: str, session_date: datetime, all_summaries: List[Dict[str, Any]]) -> bool:
     """Check if a gap was resolved in a subsequent session."""

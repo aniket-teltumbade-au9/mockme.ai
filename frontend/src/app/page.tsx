@@ -24,6 +24,8 @@ import { ProgressDashboard } from "@/components/Dashboard/ProgressDashboard";
 import { API_BASE, authHeaders } from "@/utils/apiConfig";
 import { useAuth } from "@/context/AuthContext";
 import { LoginScreen } from "@/components/LoginScreen";
+import { VoiceVisualizer } from "@/components/VoiceVisualizer";
+import { TutorPanel } from "@/components/Dashboard/TutorPanel";
 
 interface EditorConfig {
   language: string;
@@ -126,7 +128,14 @@ export default function InterviewPage() {
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showTutorPanel, setShowTutorPanel] = useState(false);
+  const [selectedTutorSession, setSelectedTutorSession] = useState<{ question: string; answer: string; isAssistant: boolean } | null>(null);
   const [dashboardTab, setDashboardTab] = useState<"history" | "progress">("history");
+
+  const setTutorSession = (session: { question: string; answer: string; isAssistant: boolean }) => {
+    setSelectedTutorSession(session);
+    setShowTutorPanel(true);
+  };
 
   const fetchProgress = useCallback(async () => {
     if (!userId) return;
@@ -731,7 +740,13 @@ export default function InterviewPage() {
                     fontSize: "0.9rem",
                   }}>
                     <CheckCircle2 size={20} color="var(--accent)" />
-                    <span>{pendingResume?.name || storedResumeFilename}</span>
+                    <span style={{ flex: 1 }}>
+                      {pendingResume ? (
+                        <span>{pendingResume.name}</span>
+                      ) : (
+                        <span>Resume Loaded: {storedResumeFilename} ✅</span>
+                      )}
+                    </span>
                     <button
                       onClick={() => setPendingResume(null)}
                       className="secondary"
@@ -849,11 +864,27 @@ export default function InterviewPage() {
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Transcript</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {selectedInterview.history?.map((msg, index) => (
-                <div key={index} style={{
+                <div 
+                  key={index} 
+                  onClick={() => {
+                    if (msg.role === 'assistant' || (msg.role === 'user' && index > 0 && selectedInterview.history[index-1].role === 'assistant')) {
+                      // We want to trigger tutor on assistant responses or user responses that follow an assistant response (the answer)
+                      (window as any).currentSessionId = selectedInterview.sessionId;
+                      setTutorSession({
+                        question: selectedInterview.history[index-1]?.content || msg.content,
+                        answer: msg.content,
+                        isAssistant: msg.role === 'assistant'
+                      });
+                    }
+                  }}
+                  style={{
                     padding: '1rem',
                     borderRadius: 'var(--radius-md)',
-                    background: msg.role === 'assistant' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.03)'
-                }}>
+                    background: msg.role === 'assistant' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s ease',
+                  }}
+                >
                     <strong style={{ display: 'block', marginBottom: '0.5rem', color: msg.role === 'assistant' ? 'var(--primary)' : 'var(--foreground)' }}>
                         {msg.role === 'assistant' ? 'Sarah' : 'You'}
                     </strong>
@@ -862,6 +893,14 @@ export default function InterviewPage() {
               ))}
             </div>
           </div>
+        )}
+
+        {showTutorPanel && selectedTutorSession && (
+          <TutorPanel
+            question={selectedTutorSession.question}
+            userAnswer={selectedTutorSession.answer}
+            onClose={() => setShowTutorPanel(false)}
+          />
         )}
 
       </div> // end outer container
@@ -934,7 +973,7 @@ export default function InterviewPage() {
               transition: "var(--transition-smooth)",
             }}
           >
-            <div className="interviewer-container">
+            <div className="interviewer-container" style={{ position: 'relative' }}>
               <div className={`avatar-pulse ${isSpeaking ? "speaking" : ""}`} />
               <div
                 className="avatar-core"
@@ -946,6 +985,10 @@ export default function InterviewPage() {
               >
                 <User size={54} />
               </div>
+              <VoiceVisualizer 
+                isActive={isSpeaking || isRecording} 
+                audioSource={isSpeaking ? undefined : (turnRecorderRef.current?.stream || null) as any} 
+              />
             </div>
 
             <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
@@ -1018,7 +1061,11 @@ export default function InterviewPage() {
                       <h3 style={{ fontSize: "1.25rem" }}>Interview Complete</h3>
                       <button
                         onClick={() => {
-                          window.location.href = "/";
+                          setShowAnalysis(true);
+                          setSelectedInterview({
+                            sessionId: sessionIdRef.current || "",
+                            created_at: new Date().toISOString(),
+                          });
                         }}
                         style={{ minWidth: "200px" }}
                       >

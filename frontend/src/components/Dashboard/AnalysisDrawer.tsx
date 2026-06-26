@@ -329,7 +329,45 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
             </section>
           )}
 
+          {/* Behavioral STAR Analysis */}
+          {analysis.behavioral_star_analysis && analysis.behavioral_star_analysis.length > 0 && (
+            <section style={{ padding: '1rem', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: 'var(--radius-sm)' }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#d8b4fe' }}>🧠 Behavioral STAR Analysis</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {analysis.behavioral_star_analysis.map((item, idx) => (
+                  <div key={idx} style={{ paddingBottom: '1.5rem', borderBottom: idx < analysis.behavioral_star_analysis!.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '0.75rem' }}>{item.question}</div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
+                      {[
+                        { label: 'Situation', value: item.scores.situation },
+                        { label: 'Task', value: item.scores.task },
+                        { label: 'Action', value: item.scores.action },
+                        { label: 'Result', value: item.scores.result },
+                      ].map((s, sIdx) => (
+                        <div key={sIdx} style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          {s.value ? <CheckCircle2 size={14} color="#86efac" /> : <div style={{ width: 14, height: 14, borderRadius: '50%', border: '1px solid #ef4444' }} />}
+                          <span>{s.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginBottom: '0.75rem', lineHeight: '1.4' }}>{item.feedback}</p>
+                    
+                    {item.tutor_tip && (
+                      <div style={{ padding: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '0.5rem', borderLeft: '3px solid #3b82f6' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#93c5fd', marginBottom: '0.25rem' }}>Tutor Tip:</div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', lineHeight: '1.4' }}>{item.tutor_tip}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Tactical Execution Strategies */}
+
           {analysis.remediation_plan?.tactical_strategies && analysis.remediation_plan.tactical_strategies.length > 0 && (
             <section style={{ padding: '1rem', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--radius-sm)' }}>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#93c5fd' }}>🛠️ Tactical Execution Strategies</h3>

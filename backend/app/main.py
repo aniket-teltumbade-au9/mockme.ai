@@ -34,13 +34,16 @@ from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_pat
 from app.services.voice_service import get_or_refresh_voices
 from app.services.dropbox_service import DropboxService
 
-from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin
-from app.routers.interviews import finalize_interview_task
+from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin, tutor
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Load shared resources (e.g., database connection pools, ML models)
     await test_db_connection()
+    print("Application is starting up...")
     yield
+    # Clean up resources (e.g., close connections)
+    print("Application is shutting down...")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -59,6 +62,7 @@ app.include_router(jd_samples.router)
 app.include_router(progress.router)
 app.include_router(focused_sessions.router)
 app.include_router(admin.router)
+app.include_router(tutor.router)
 
 # In-memory session store
 sessions = {}

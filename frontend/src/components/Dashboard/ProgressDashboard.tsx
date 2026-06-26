@@ -15,6 +15,7 @@ import {
 import { TrendingUp, CheckCircle2, AlertCircle, Zap } from "lucide-react";
 import axios from "axios";
 import { API_BASE, authHeaders } from "@/utils/apiConfig";
+import { SkillHeatmap } from "./SkillHeatmap"; // Import the new component
 
 interface SessionData {
   session_id: string;
@@ -35,6 +36,7 @@ interface ProgressData {
 
 export const ProgressDashboard: React.FC = () => {
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [heatmapData, setHeatmapData] = useState<{ category: string; score: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,10 +44,13 @@ export const ProgressDashboard: React.FC = () => {
     const fetchProgress = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`${API_BASE}/user/progress/detailed`, {
-          headers: authHeaders(),
-        });
+        const [res, heatmapRes] = await Promise.all([
+          axios.get(`${API_BASE}/user/progress/detailed`, { headers: authHeaders() }),
+          axios.get(`${API_BASE}/user/progress/heatmap`, { headers: authHeaders() })
+        ]);
+        
         setProgressData(res.data);
+        setHeatmapData(heatmapRes.data.data);
         setError(null);
       } catch (err) {
         setError("Failed to load progress data");
@@ -123,6 +128,19 @@ export const ProgressDashboard: React.FC = () => {
           value={`${improvementRate}%`}
           color="#06b6d4"
         />
+      </div>
+
+      {/* Skill Heatmap Section */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid var(--border)",
+          borderRadius: "12px",
+          padding: "1.5rem",
+        }}
+      >
+        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem' }}>Skill Proficiency Heatmap</h3>
+        <SkillHeatmap data={heatmapData} />
       </div>
 
       {/* Performance Score Trend */}
