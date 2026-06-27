@@ -1,17 +1,21 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks, Form
 from datetime import datetime, timezone
+from typing import Optional
 from app.services.database import get_session, get_user, update_session, db
 from app.services.auth import get_current_user
 from app.services.dropbox_service import DropboxService
 from app.services.analysis_builder import build_groq_session_analysis
 from app.services.storage import get_storage_dir, get_mic_path, get_mixed_path, build_final_interview_audio
+from app.services.video_storage import VideoStorageService
+from app.models.video import VideoMetadata
+from app.logger import logger
 import os
 
 router = APIRouter(prefix="/api/interviews", tags=["interviews"])
 
 # ... (rest of router functions)
 
-async def finalize_interview_task(session_id: str, mic_path_override: str | None = None):
+async def finalize_interview_task(session_id: str, mic_path_override: Optional[str] = None):
     print(f"\n=== FINALIZE TASK START session={session_id} ===")
     session = await get_session(session_id)
     if not session:
@@ -243,3 +247,360 @@ async def refinalize_interview(
     })
     background_tasks.add_task(finalize_interview_task, session_id, mic_path)
     return {"success": True, "message": "Re-finalization started"}
+
+
+@router.post("/{sessionId}/upload-video")
+async def upload_video(
+    sessionId: str,
+    video: UploadFile = File(...),
+    duration: float = Form(...),
+    codec: str = Form(...),
+    width: int = Form(...),
+    height: int = Form(...),
+    frameRate: float = Form(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Upload recorded video blob to storage.
+    
+    Accepts multipart/form-data with video file and metadata. Integrates with
+    VideoStorageService to store video in Dropbox and extract additional metadata.
+    
+    Args:
+        sessionId: Unique session identifier
+        video: Binary video file blob
+        duration: Recording duration in seconds
+        codec: Video codec (e.g., 'h264', 'vp8')
+        width: Frame width in pixels
+        height: Frame height in pixels
+        frameRate: Frames per second
+        current_user: Authenticated user from dependency
+        
+    Returns:
+        {
+            "success": bool,
+            "videoPath": str,
+            "videoUrl": str,
+            "fileSize": int,
+            "duration": float
+        }
+        
+    Raises:
+        HTTPException: 400 (invalid video), 403 (unauthorized), 
+                      404 (session not found), 413 (file too large), 
+                      500 (storage error)
+    """
+    try:
+        # Verify session exists and belongs to current user
+        session = await get_session(sessionId)
+        if not session:
+            logger.warning(f"Upload video: session {sessionId} not found")
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if session.get("user_id") != current_user["user_id"]:
+            logger.warning(
+                f"Upload video: user {current_user['user_id']} "
+                f"unauthorized for session {sessionId}"
+            )
+            raise HTTPException(
+                status_code=403, 
+                detail="Session does not belong to authenticated user"
+            )
+        
+        # Read video blob from upload
+        video_bytes = await video.read()
+        
+        if not video_bytes or len(video_bytes) == 0:
+            logger.warning(f"Upload video: empty video blob for session {sessionId}")
+            raise HTTPException(status_code=400, detail="Video blob cannot be empty")
+        
+        # Check file size limit (500 MB)
+        max_size = 500 * 1024 * 1024  # 500 MB in bytes
+        if len(video_bytes) > max_size:
+            logger.warning(
+                f"Upload video: file too large for session {sessionId} "
+                f"({len(video_bytes)} bytes, max {max_size})"
+            )
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum size is 500 MB"
+            )
+        
+        logger.info(
+            f"Upload video: received video for session {sessionId} "
+            f"({len(video_bytes)} bytes)"
+        )
+        
+        # Get user's Dropbox credentials
+        user = await get_user(current_user["user_id"])
+        if not user or not user.get("dropbox_refresh_token"):
+            logger.error(
+                f"Upload video: no Dropbox credentials for user {current_user['user_id']}"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Dropbox storage not configured for user"
+            )
+        
+        # Initialize VideoStorageService and upload
+        try:
+            video_storage = VideoStorageService(user["dropbox_refresh_token"])
+            video_url, metadata = video_storage.uploadVideo(video_bytes, sessionId)
+            logger.info(
+                f"Upload video: successfully uploaded video for session {sessionId} "
+                f"to URL {video_url}"
+            )
+            
+            # Build VideoMetadata model for storage
+            video_metadata = VideoMetadata(
+                videoUrl=video_url,
+                duration=metadata.get("duration", duration),
+                fileSize=metadata.get("fileSize", len(video_bytes)),
+                codec=metadata.get("codec", codec),
+                width=metadata.get("width", width),
+                height=metadata.get("height", height),
+                frameRate=metadata.get("frameRate", frameRate),
+                uploadedAt=datetime.fromisoformat(metadata.get("uploadedAt")),
+                recordingMode=metadata.get("recordingMode", "video")
+            )
+            
+            # Update session with video metadata
+            await update_session(
+                sessionId,
+                {
+                    "videoMetadata": video_metadata.model_dump(),
+                    "recording_mode": "video"
+                }
+            )
+            logger.info(f"Upload video: session {sessionId} updated with video metadata")
+            
+            # Return success response
+            return {
+                "success": True,
+                "videoPath": f"/MockMe.AI/videos/{sessionId}.mp4",
+                "videoUrl": video_url,
+                "fileSize": len(video_bytes),
+                "duration": metadata.get("duration", duration)
+            }
+        
+        except ValueError as e:
+            logger.error(f"Upload video: validation error for session {sessionId}: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
+        except RuntimeError as e:
+            logger.error(f"Upload video: storage error for session {sessionId}: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to upload video to storage")
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Upload video: unexpected error for session {sessionId}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{sessionId}/video-info")
+async def get_video_info(
+    sessionId: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Retrieve video metadata and playback URL for a session.
+    
+    Returns video information including the playback URL, duration, file size,
+    codec, resolution, and frame rate. Used by the frontend to display video
+    in the results panel and enable playback.
+    
+    Args:
+        sessionId: Unique session identifier
+        current_user: Authenticated user from dependency
+        
+    Returns:
+        {
+            "sessionId": str,
+            "recordingMode": str ("audio" | "video"),
+            "hasVideo": bool,
+            "videoMetadata": {
+                "videoUrl": str,
+                "duration": float,
+                "fileSize": int,
+                "codec": str,
+                "width": int,
+                "height": int,
+                "frameRate": float,
+                "uploadedAt": datetime,
+                "recordingMode": str
+            }
+        }
+        
+    Raises:
+        HTTPException: 403 (unauthorized), 404 (session or video not found),
+                      500 (error retrieving video info)
+    """
+    try:
+        # Verify session exists and belongs to current user
+        session = await get_session(sessionId)
+        if not session:
+            logger.warning(f"Video info: session {sessionId} not found")
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if session.get("user_id") != current_user["user_id"]:
+            logger.warning(
+                f"Video info: user {current_user['user_id']} "
+                f"unauthorized for session {sessionId}"
+            )
+            raise HTTPException(
+                status_code=403, 
+                detail="Session does not belong to authenticated user"
+            )
+        
+        # Get video metadata from session
+        video_metadata_dict = session.get("videoMetadata")
+        
+        # Check if video exists
+        if not video_metadata_dict:
+            logger.info(f"Video info: no video found for session {sessionId}")
+            raise HTTPException(
+                status_code=404,
+                detail="No video available for this session"
+            )
+        
+        # Get the recording mode from session (default to 'audio')
+        recording_mode = session.get("recording_mode", "audio")
+        
+        # Build the video metadata object for response
+        # videoMetadata could be stored as dict or VideoMetadata model
+        if isinstance(video_metadata_dict, dict):
+            video_metadata = VideoMetadata(
+                videoUrl=video_metadata_dict.get("videoUrl", ""),
+                duration=video_metadata_dict.get("duration", 0.0),
+                fileSize=video_metadata_dict.get("fileSize", 0),
+                codec=video_metadata_dict.get("codec", "unknown"),
+                width=video_metadata_dict.get("width", 0),
+                height=video_metadata_dict.get("height", 0),
+                frameRate=video_metadata_dict.get("frameRate", 0.0),
+                uploadedAt=video_metadata_dict.get("uploadedAt", datetime.utcnow()),
+                recordingMode=video_metadata_dict.get("recordingMode", recording_mode)
+            )
+        else:
+            # Already a VideoMetadata model
+            video_metadata = video_metadata_dict
+        
+        logger.info(
+            f"Video info: retrieved video info for session {sessionId}, "
+            f"hasVideo=True"
+        )
+        
+        # Return the video info response
+        return {
+            "sessionId": sessionId,
+            "recordingMode": recording_mode,
+            "hasVideo": True,
+            "videoMetadata": video_metadata.dict()
+        }
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Video info: unexpected error for session {sessionId}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error retrieving video info")
+
+
+@router.delete("/{sessionId}/video")
+async def delete_video(
+    sessionId: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Delete video file and metadata for a session.
+    
+    Removes the video file from Dropbox storage and clears video metadata
+    from the session. Used when users want to remove recorded video from
+    an interview session.
+    
+    Args:
+        sessionId: Unique session identifier
+        current_user: Authenticated user from dependency
+        
+    Returns:
+        {
+            "success": bool,
+            "message": str
+        }
+        
+    Raises:
+        HTTPException: 403 (unauthorized), 404 (session or video not found),
+                      500 (deletion error)
+    """
+    try:
+        # Verify session exists and belongs to current user
+        session = await get_session(sessionId)
+        if not session:
+            logger.warning(f"Delete video: session {sessionId} not found")
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if session.get("user_id") != current_user["user_id"]:
+            logger.warning(
+                f"Delete video: user {current_user['user_id']} "
+                f"unauthorized for session {sessionId}"
+            )
+            raise HTTPException(
+                status_code=403, 
+                detail="Session does not belong to authenticated user"
+            )
+        
+        # Check if video metadata exists in session
+        video_metadata_dict = session.get("videoMetadata")
+        if not video_metadata_dict:
+            logger.info(f"Delete video: no video found for session {sessionId}")
+            raise HTTPException(
+                status_code=404,
+                detail="No video available for this session"
+            )
+        
+        # Get user's Dropbox credentials
+        user = await get_user(current_user["user_id"])
+        if not user or not user.get("dropbox_refresh_token"):
+            logger.error(
+                f"Delete video: no Dropbox credentials for user {current_user['user_id']}"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Dropbox storage not configured for user"
+            )
+        
+        # Initialize VideoStorageService and delete video
+        try:
+            video_storage = VideoStorageService(user["dropbox_refresh_token"])
+            deleted = video_storage.deleteVideo(sessionId)
+            
+            if not deleted:
+                # Video file not found in storage (already deleted or never uploaded)
+                logger.warning(
+                    f"Delete video: video file not found in storage for session {sessionId}"
+                )
+            
+            # Clear video metadata from session regardless of storage state
+            # This ensures the session is marked as having no video
+            await update_session(
+                sessionId,
+                {
+                    "videoMetadata": None,
+                    "recording_mode": "audio"
+                }
+            )
+            
+            logger.info(f"Delete video: successfully deleted video for session {sessionId}")
+            
+            return {
+                "success": True,
+                "message": "Video deleted successfully"
+            }
+        
+        except RuntimeError as e:
+            logger.error(f"Delete video: storage error for session {sessionId}: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to delete video from storage")
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Delete video: unexpected error for session {sessionId}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")

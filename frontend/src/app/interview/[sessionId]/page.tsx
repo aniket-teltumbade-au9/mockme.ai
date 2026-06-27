@@ -5,8 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { Mic, MicOff, Terminal, User, Loader2, CheckCircle2, Send } from "lucide-react";
 import { CodeEditor } from "@/components/CodeEditor";
 import { useInterviewRecorder } from "@/hooks/useInterviewRecorder";
+import { useVideoRecording } from "@/hooks/useVideoRecording";
 import { VoiceVisualizer } from "@/components/VoiceVisualizer";
 import { LiveTranscript, VoiceSelector, TTSVoice } from "@/components/InterviewOverlays";
+import { VideoModeToggle } from "@/components/Interview/VideoModeToggle";
+import { VideoPreview } from "@/components/Interview/VideoPreview";
 import { API_BASE, authHeaders } from "@/utils/apiConfig";
 import { useAuth } from "@/context/AuthContext";
 import { UiConfig } from "@/types/interview";
@@ -37,6 +40,20 @@ export default function InterviewSessionPage() {
 
   const { stopRecording: stopFullSessionRecording } = useInterviewRecorder();
 
+  // Video recording state (Sub-task 2.4.3: Initialize useVideoRecording hook)
+  const { 
+    isRecording: isVideoRecording,
+    recordingMode,
+    videoPreviewStream,
+    startRecording: startVideoRecordingHook,
+    stopRecording: stopVideoRecording
+  } = useVideoRecording();
+
+  // Video mode selection state (Sub-task 2.4.4: Track recording mode)
+  const [selectedRecordingMode, setSelectedRecordingMode] = useState<"audio" | "video">("audio");
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [showVideoModeSelection, setShowVideoModeSelection] = useState(true);
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const setUiConfigSynced = (config: UiConfig | null) => {
@@ -64,6 +81,19 @@ export default function InterviewSessionPage() {
     if (!text) {
       setIsSpeaking(false);
       startRecording();
+      
+      // Sub-task 2.4.3 & 2.4.4: Start video recording if video mode selected
+      if (selectedRecordingMode === "video" && showVideoModeSelection) {
+        try {
+          await startVideoRecordingHook(selectedRecordingMode);
+          setShowVideoModeSelection(false);
+        } catch (err) {
+          console.error("Error starting video recording, continuing with audio only:", err);
+          setShowVideoModeSelection(false);
+        }
+      } else {
+        setShowVideoModeSelection(false);
+      }
       return;
     }
 
@@ -137,6 +167,21 @@ export default function InterviewSessionPage() {
         setIsSpeaking(false);
         setIsFinalizing(true);
         try { await stopFullSessionRecording(); } catch {}
+        
+        // Sub-task 2.4.5: Capture video blob when user ends interview
+        if (selectedRecordingMode === "video" && isVideoRecording) {
+          try {
+            const { videoBlob } = await stopVideoRecording();
+            // Sub-task 2.4.6: Upload video blob to backend
+            if (videoBlob) {
+              await uploadVideoBlob(videoBlob);
+            }
+          } catch (err) {
+            console.error("Error capturing/uploading video:", err);
+            // Continue with analysis even if video upload fails
+          }
+        }
+        
         setIsFinalizing(false);
         return;
       }
@@ -147,6 +192,36 @@ export default function InterviewSessionPage() {
       setTimeout(() => setErrorMsg(null), 5000);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Sub-task 2.4.6: Upload video blob to backend via /api/interviews/{sessionId}/upload-video
+  const uploadVideoBlob = async (videoBlob: Blob) => {
+    if (!sessionId) return;
+    
+    setIsUploadingVideo(true);
+    try {
+      const formData = new FormData();
+      formData.append("video", videoBlob, "interview-video.webm");
+      
+      const response = await axios.post(
+        `${API_BASE}/interviews/${sessionId}/upload-video`,
+        formData,
+        { 
+          headers: {
+            ...authHeaders(),
+            "Content-Type": "multipart/form-data"
+          }
+        }
+      );
+      
+      console.log("Video uploaded successfully:", response.data);
+    } catch (err) {
+      console.error("Error uploading video blob:", err);
+      setErrorMsg("Failed to upload video recording.");
+      setTimeout(() => setErrorMsg(null), 5000);
+    } finally {
+      setIsUploadingVideo(false);
     }
   };
 
@@ -253,6 +328,17 @@ export default function InterviewSessionPage() {
               transition: "var(--transition-smooth)",
             }}
           >
+            {/* Sub-task 2.4.2: Add VideoPreview component to interview recording view */}
+            {selectedRecordingMode === "video" && !showVideoModeSelection && (
+              <div style={{ width: "100%", maxWidth: "500px", marginBottom: "2rem" }}>
+                <VideoPreview
+                  mediaStream={videoPreviewStream}
+                  recordingMode={selectedRecordingMode}
+                  isRecording={isVideoRecording}
+                />
+              </div>
+            )}
+
             <div className="interviewer-container" style={{ position: 'relative' }}>
               <div className={`avatar-pulse ${isSpeaking ? "speaking" : ""}`} />
               <div
@@ -368,10 +454,20 @@ export default function InterviewSessionPage() {
               )}
             </div>
 
-            {/* Live transcript of last Sarah utterance */}
             <div style={{ width: "100%", maxWidth: "600px", marginTop: "2rem" }}>
               <LiveTranscript text={isSpeaking ? lastSarahText : null} />
             </div>
+
+            {/* Sub-task 2.4.1: Add VideoModeToggle to interview setup screen before "Start Interview" */}
+            {showVideoModeSelection && uiConfig?.currentState !== "STATE_3" && (
+              <div style={{ width: "100%", maxWidth: "600px", marginTop: "2rem", padding: "1.5rem", background: "rgba(99, 102, 241, 0.05)", borderRadius: "12px", border: "1px solid rgba(99, 102, 241, 0.2)" }}>
+                <VideoModeToggle
+                  defaultMode="audio"
+                  onModeChange={(mode) => setSelectedRecordingMode(mode)}
+                  isDisabled={false}
+                />
+              </div>
+            )}
           </div>
 
           {/* Right panel — code workspace */}

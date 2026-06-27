@@ -34,6 +34,7 @@ from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_pat
 from app.services.voice_service import get_or_refresh_voices
 from app.services.dropbox_service import DropboxService
 
+from app.routers.interviews import finalize_interview_task
 from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin, tutor
 
 @asynccontextmanager
@@ -162,6 +163,7 @@ async def start_session(
     is_rehearsal: bool = Form(False),
     persona: Optional[str] = Form(None),
     voice_lang: Optional[str] = Form("en-in"),
+    recordingMode: str = Form("audio"),
     resume: Optional[UploadFile] = File(None),
     current_user: dict = Depends(get_current_user),
 ):
@@ -209,6 +211,11 @@ async def start_session(
     session.currentCodeWorkspace = jd
     session.persona = persona
     session.voice_lang = voice_lang or "en-in"
+    
+    # Validate and set recording mode (default to 'audio' for backward compatibility)
+    if recordingMode not in ("audio", "video"):
+        recordingMode = "audio"
+    session.recording_mode = recordingMode
     
     # Calculate day number and initial performance score
     progress = await get_user_progress(user_id)
@@ -258,6 +265,7 @@ async def start_session(
         "persona": persona,
         "resume_url": resume_url,
         "voice_lang": voice_lang or "en-in",
+        "recording_mode": recordingMode,
         "user_id": user_id,
         "status": "active",
         "day_number": session.day_number,
@@ -266,6 +274,7 @@ async def start_session(
     
     return {
         "sessionId": session_id,
+        "recordingMode": recordingMode,
         "uiConfig": ui_config
     }
 

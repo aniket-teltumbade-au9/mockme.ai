@@ -37,6 +37,8 @@ class Session(BaseModel):
     dropbox_audio_url: Optional[str] = None
     dropbox_analysis_url: Optional[str] = None
     recording_available: bool = False
+    recording_mode: str = "audio"  # Recording mode: 'audio' or 'video'
+    videoMetadata: Optional[Dict[str, Any]] = None  # Stores video metadata when video recording is enabled
     finalization_attempted_at: Optional[datetime] = None
     finalization_error: Optional[str] = None
     analysis: Optional[Dict[str, Any]] = None

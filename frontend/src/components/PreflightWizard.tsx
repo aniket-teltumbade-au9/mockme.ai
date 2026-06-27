@@ -176,17 +176,36 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
   }, [steps]);
 
   return (
-    <div 
-      className="glass-panel" 
-      style={{ 
-        width: '100%',
-        maxWidth: '500px',
-        margin: '1rem',
-        padding: '1.5rem',
-        maxHeight: '90vh',
-        overflowY: 'auto'
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(2, 6, 23, 0.9)",
+        backdropFilter: "blur(12px)",
+        padding: "1rem",
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
       }}
     >
+      <div 
+        className="glass-panel" 
+        style={{ 
+          width: '100%',
+          maxWidth: '500px',
+          padding: '1.5rem',
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
       <div style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>
           Session Setup
@@ -355,6 +374,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
             </>
           )}
         </button>
+      </div>
       </div>
     </div>
   );

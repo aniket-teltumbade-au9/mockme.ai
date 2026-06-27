@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Generate Tasks",
+  "description": "Generate tasks.md from requirements and design",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npx -y @kiro-rs/cli spec generate-tasks post-interview-real-world-prep",
+    "timeout": 120
+  },
+  "workspaceFolderName": "mockme",
+  "shortName": "generate-tasks"
+}

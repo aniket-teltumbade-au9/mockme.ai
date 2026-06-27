@@ -6,6 +6,8 @@ import {
   BarChart3,
   History,
   CheckCircle2,
+  LogOut,
+  Loader2,
 } from "lucide-react";
 import { InterviewHistoryCard } from "@/components/Dashboard/InterviewHistoryCard";
 import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
@@ -156,6 +158,49 @@ export default function DashboardPage() {
 
   return (
     <div className="container">
+      {/* Header with Logout */}
+      <div style={{ position: "fixed", top: 0, right: 0, left: 0, zIndex: 100, padding: "1rem 2rem", background: "rgba(2, 6, 23, 0.5)", backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(255, 255, 255, 0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div></div>
+        {userId && (
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <span style={{ fontSize: "0.85rem", color: "var(--foreground-muted)" }}>{userId}</span>
+            <button
+              onClick={() => {
+                logout();
+                router.push("/");
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.5rem 1rem",
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                borderRadius: "8px",
+                color: "#fca5a5",
+                cursor: "pointer",
+                fontSize: "0.9rem",
+                fontWeight: 500,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.5)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.3)";
+              }}
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Main content with top padding to account for fixed header */}
+      <div style={{ paddingTop: "70px" }}>
       {sessionExpired && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(2, 6, 23, 0.9)", backdropFilter: "blur(12px)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div className="glass-panel" style={{ maxWidth: "400px", textAlign: "center" }}>
@@ -278,6 +323,7 @@ export default function DashboardPage() {
         </div>
       )}
       {showTutorPanel && selectedTutorSession && <TutorPanel question={selectedTutorSession.question} userAnswer={selectedTutorSession.answer} onClose={() => setShowTutorPanel(false)} />}
+      </div>
     </div>
   );
 }
