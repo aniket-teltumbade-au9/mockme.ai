@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import {
   BarChart3,
   History,
   CheckCircle2,
   Loader2,
+  User,
 } from "lucide-react";
 import { InterviewHistoryCard } from "@/components/Dashboard/InterviewHistoryCard";
 import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
@@ -41,6 +42,7 @@ const PERSONAS = [
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { userId, accessToken, isInitialized, sessionExpired, logout } = useAuth();
 
   const [pendingJd, setPendingJd] = useState<string | null>(null);
@@ -57,18 +59,37 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const [interviewHistory, setInterviewHistory] = useState<InterviewRecord[]>([]);
-  const [selectedInterview, setSelectedInterview] = useState<InterviewRecord | null>(null);
-  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const [showTranscript, setShowTranscript] = useState(false);
-  const [showTutorPanel, setShowTutorPanel] = useState(false);
-  const [selectedTutorSession, setSelectedTutorSession] = useState<{ question: string; answer: string; isAssistant: boolean } | null>(null);
-  const [dashboardTab, setDashboardTab] = useState<"history" | "progress">("history");
 
-  const setTutorSession = (session: { question: string; answer: string; isAssistant: boolean }) => {
-    setSelectedTutorSession(session);
-    setShowTutorPanel(true);
+  // --- URL State Management ---
+  const tab = searchParams.get("tab") || "history";
+  const sessionId = searchParams.get("sessionId");
+  const view = searchParams.get("view");
+  const msgIndex = searchParams.get("msgIndex");
+
+  const selectedInterview = interviewHistory.find(inv => inv.sessionId === sessionId) || null;
+
+  const updateParams = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    });
+    router.push(`?${params.toString()}`, { scroll: false });
   };
+
+  const closeView = () => updateParams({ view: null, sessionId: null, msgIndex: null });
+
+  // Add this effect near your other useEffects
+useEffect(() => {
+  if (sessionId) {
+    window.currentSessionId = sessionId;
+  }
+}, [sessionId]);
+
+// Then simplify setTutorSession — no window mutation needed here
+const setTutorSession = (id: string, index: number) => {
+  updateParams({ sessionId: id, view: "tutor", msgIndex: index.toString() });
+};
 
   const fetchProgress = useCallback(async () => {
     if (!userId) return;
@@ -123,7 +144,6 @@ export default function DashboardPage() {
       if (topic) formData.append("topic", topic);
       formData.append("is_rehearsal", isRehearsal.toString());
       if (selectedPersona.id) formData.append("persona", selectedPersona.id);
-      // Removed voice selection dependency here as it's for the interview session
       if (pendingResume) formData.append("resume", pendingResume);
 
       const res = await axios.post(`${API_BASE}/session/start`, formData, { 
@@ -135,7 +155,6 @@ export default function DashboardPage() {
         return;
       }
       
-      // Navigate to interview page
       router.push(`/interview/${res.data.sessionId}`);
     } catch (err) {
       console.error("Failed to start interview", err);
@@ -163,6 +182,20 @@ export default function DashboardPage() {
   if (!isInitialized) return <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f172a", color: "white" }}>Loading...</div>;
   if (!userId || !accessToken) return <LoginScreen />;
 
+  // Derive tutor session data from URL params
+  const selectedTutorSession = (sessionId && msgIndex && selectedInterview?.history) ? (() => {
+    const idx = parseInt(msgIndex);
+    const msg = selectedInterview.history![idx];
+    if (!msg) return null;
+    return {
+      question: (idx > 0 && selectedInterview.history![idx - 1]?.role === 'assistant') 
+        ? selectedInterview.history![idx - 1].content 
+        : msg.content,
+      answer: msg.content,
+      isAssistant: msg.role === 'assistant'
+    };
+  })() : null;
+
   return (
     <div className="container">
       {sessionExpired && (
@@ -174,13 +207,20 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="layout-conversational" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="layout-conversational" style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <header style={{ width: "100%", maxWidth: "900px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", padding: "0 1rem" }}>
+          <h1 style={{ fontSize: "1.5rem", background: "linear-gradient(to right, #818cf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontWeight: 800, cursor: "pointer" }} onClick={() => router.push("/")}>MockMe.AI</h1>
+          <button 
+            onClick={() => router.push("/profile")} 
+            className="secondary" 
+            style={{ padding: "0.5rem 1rem", borderRadius: "20px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 500 }}
+          >
+            <User size={16} /> Profile
+          </button>
+        </header>
+
         {!showJDScreen ? (
           <div className="glass-panel text-center" style={{ maxWidth: "900px", width: "95%", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "2rem" }}>
-              <h1 style={{ fontSize: "2rem", background: "linear-gradient(to right, #818cf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontWeight: 800 }}>MockMe.AI</h1>
-            </div>
-
             {errorMsg && <div style={{ color: "var(--danger)", marginBottom: "1rem" }}>{errorMsg}</div>}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", textAlign: "left", marginBottom: "3rem" }}>
@@ -205,12 +245,12 @@ export default function DashboardPage() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", borderBottom: "1px solid var(--border)" }}>
                 <h3 style={{ fontSize: "1.25rem", fontWeight: 800 }}>Performance & History</h3>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button onClick={() => setDashboardTab("history")} style={{ padding: "0.5rem 1rem", background: dashboardTab === "history" ? "rgba(129, 140, 248, 0.2)" : "transparent", border: dashboardTab === "history" ? "1px solid #818cf8" : "1px solid transparent", borderRadius: "8px", color: dashboardTab === "history" ? "#818cf8" : "var(--foreground-muted)", cursor: "pointer", fontSize: "0.9rem", fontWeight: dashboardTab === "history" ? 600 : 400, transition: "all 0.2s" }}>History</button>
-                  <button onClick={() => setDashboardTab("progress")} style={{ padding: "0.5rem 1rem", background: dashboardTab === "progress" ? "rgba(129, 140, 248, 0.2)" : "transparent", border: dashboardTab === "progress" ? "1px solid #818cf8" : "1px solid transparent", borderRadius: "8px", color: dashboardTab === "progress" ? "#818cf8" : "var(--foreground-muted)", cursor: "pointer", fontSize: "0.9rem", fontWeight: dashboardTab === "progress" ? 600 : 400, transition: "all 0.2s" }}>Progress & Analytics</button>
+                  <button onClick={() => updateParams({ tab: "history" })} style={{ padding: "0.5rem 1rem", background: tab === "history" ? "rgba(129, 140, 248, 0.2)" : "transparent", border: tab === "history" ? "1px solid #818cf8" : "1px solid transparent", borderRadius: "8px", color: tab === "history" ? "#818cf8" : "var(--foreground-muted)", cursor: "pointer", fontSize: "0.9rem", fontWeight: tab === "history" ? 600 : 400, transition: "all 0.2s" }}>History</button>
+                  <button onClick={() => updateParams({ tab: "progress" })} style={{ padding: "0.5rem 1rem", background: tab === "progress" ? "rgba(129, 140, 248, 0.2)" : "transparent", border: tab === "progress" ? "1px solid #818cf8" : "1px solid transparent", borderRadius: "8px", color: tab === "progress" ? "#818cf8" : "var(--foreground-muted)", cursor: "pointer", fontSize: "0.9rem", fontWeight: tab === "progress" ? 600 : 400, transition: "all 0.2s" }}>Progress & Analytics</button>
                 </div>
               </div>
 
-              {dashboardTab === "history" ? (
+              {tab === "history" ? (
                 <div>
                   <div style={{ fontSize: "0.8rem", color: "var(--foreground-muted)", fontWeight: 500, marginBottom: "1rem" }}>{interviewHistory.length} Recorded Sessions</div>
                   <div style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -219,9 +259,9 @@ export default function DashboardPage() {
                         <InterviewHistoryCard
                           key={inv.sessionId}
                           interview={inv}
-                          onPlayAudio={(i) => { setSelectedInterview(i); setShowAudioPlayer(true); }}
-                          onViewAnalysis={(i) => { setSelectedInterview(i); setShowAnalysis(true); }}
-                          onViewTranscript={(i) => { setSelectedInterview(i); setShowTranscript(true); }}
+                          onPlayAudio={(i) => updateParams({ sessionId: i.sessionId, view: "audio" })}
+                          onViewAnalysis={(i) => updateParams({ sessionId: i.sessionId, view: "analysis" })}
+                          onViewTranscript={(i) => updateParams({ sessionId: i.sessionId, view: "transcript" })}
                           onRetryFinalize={handleRetryAftersave}
                           onRetryStarted={(_newSessionId) => router.push(`/interview/${_newSessionId}`)}
                         />
@@ -269,16 +309,16 @@ export default function DashboardPage() {
           onCancel={() => { setShowPreflight(false); setPendingJd(null); }}
         />
       )}
-      {showAudioPlayer && selectedInterview?.dropbox_audio_url && <AudioPlayerModal audioUrl={selectedInterview.dropbox_audio_url} onClose={() => setShowAudioPlayer(false)} />}
-      {showAnalysis && selectedInterview && <AnalysisDrawer interview={selectedInterview} onClose={() => setShowAnalysis(false)} />}
+      {view === "audio" && selectedInterview?.dropbox_audio_url && <AudioPlayerModal audioUrl={selectedInterview.dropbox_audio_url} onClose={closeView} />}
+      {view === "analysis" && selectedInterview && <AnalysisDrawer interview={selectedInterview} onClose={closeView} />}
       
-      {showTranscript && selectedInterview && (
+      {view === "transcript" && selectedInterview && (
         <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 100, width: '100%', maxWidth: '640px', background: 'var(--background-alt)', borderLeft: '1px solid var(--border)', padding: '2rem', overflowY: 'auto' }}>
-          <button className="secondary" onClick={() => setShowTranscript(false)} style={{ marginBottom: '1rem' }}>Close</button>
+          <button className="secondary" onClick={closeView} style={{ marginBottom: '1rem' }}>Close</button>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Transcript</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {selectedInterview.history?.map((msg, index) => (
-              <div key={index} onClick={() => { if (msg.role === 'assistant' || (msg.role === 'user' && index > 0 && selectedInterview.history![index-1].role === 'assistant')) { window.currentSessionId = selectedInterview.sessionId; setTutorSession({ question: selectedInterview.history![index-1]?.content || msg.content, answer: msg.content, isAssistant: msg.role === 'assistant' }); } }} style={{ padding: '1rem', borderRadius: 'var(--radius-md)', background: msg.role === 'assistant' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.03)', cursor: 'pointer', transition: 'background 0.2s ease' }}>
+              <div key={index} onClick={() => { if (msg.role === 'assistant' || (msg.role === 'user' && index > 0 && selectedInterview.history![index-1].role === 'assistant')) { setTutorSession(selectedInterview.sessionId, index); } }} style={{ padding: '1rem', borderRadius: 'var(--radius-md)', background: msg.role === 'assistant' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.03)', cursor: 'pointer', transition: 'background 0.2s ease' }}>
                 <strong style={{ display: 'block', marginBottom: '0.5rem', color: msg.role === 'assistant' ? 'var(--primary)' : 'var(--foreground)' }}>{msg.role === 'assistant' ? 'Sarah' : 'You'}</strong>
                 <p style={{ fontSize: '0.9rem', color: 'var(--foreground-muted)' }}>{msg.content}</p>
               </div>
@@ -286,7 +326,7 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-      {showTutorPanel && selectedTutorSession && <TutorPanel question={selectedTutorSession.question} userAnswer={selectedTutorSession.answer} onClose={() => setShowTutorPanel(false)} />}
+      {view === "tutor" && selectedTutorSession && <TutorPanel question={selectedTutorSession.question} userAnswer={selectedTutorSession.answer} onClose={closeView} />}
     </div>
   );
 }
