@@ -6,9 +6,16 @@ interface VoiceVisualizerProps {
   audioSource?: MediaStream | HTMLAudioElement;
 }
 
+// Augment Window so we don't need `as any`
+declare global {
+  interface Window {
+    webkitAudioContext?: ()=>void;
+  }
+}
+
 export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({ isActive, audioSource }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isActive || !audioSource || !canvasRef.current) return;
@@ -22,11 +29,11 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({ isActive, audi
     let source: MediaStreamAudioSourceNode | MediaElementAudioSourceNode;
 
     if (audioSource instanceof MediaStream) {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
       analyser = audioContext.createAnalyser();
       source = audioContext.createMediaStreamSource(audioSource);
     } else {
-      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
       analyser = audioContext.createAnalyser();
       source = audioContext.createMediaElementSource(audioSource);
     }

@@ -6,6 +6,7 @@ import {
   BarChart3,
   History,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { InterviewHistoryCard } from "@/components/Dashboard/InterviewHistoryCard";
 import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
@@ -18,6 +19,14 @@ import { useAuth } from "@/context/AuthContext";
 import { LoginScreen } from "@/components/LoginScreen";
 import { TutorPanel } from "@/components/Dashboard/TutorPanel";
 import { InterviewRecord, UserProgress } from "@/types/interview";
+
+
+// Augment Window so we don't need `as any`
+declare global {
+  interface Window {
+    currentSessionId?: string;
+  }
+}
 
 const PERSONAS = [
   { id: "", label: "Default (Based on JD)" },
@@ -269,7 +278,7 @@ export default function DashboardPage() {
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Transcript</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {selectedInterview.history?.map((msg, index) => (
-              <div key={index} onClick={() => { if (msg.role === 'assistant' || (msg.role === 'user' && index > 0 && selectedInterview.history![index-1].role === 'assistant')) { (window as any).currentSessionId = selectedInterview.sessionId; setTutorSession({ question: selectedInterview.history![index-1]?.content || msg.content, answer: msg.content, isAssistant: msg.role === 'assistant' }); } }} style={{ padding: '1rem', borderRadius: 'var(--radius-md)', background: msg.role === 'assistant' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.03)', cursor: 'pointer', transition: 'background 0.2s ease' }}>
+              <div key={index} onClick={() => { if (msg.role === 'assistant' || (msg.role === 'user' && index > 0 && selectedInterview.history![index-1].role === 'assistant')) { window.currentSessionId = selectedInterview.sessionId; setTutorSession({ question: selectedInterview.history![index-1]?.content || msg.content, answer: msg.content, isAssistant: msg.role === 'assistant' }); } }} style={{ padding: '1rem', borderRadius: 'var(--radius-md)', background: msg.role === 'assistant' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.03)', cursor: 'pointer', transition: 'background 0.2s ease' }}>
                 <strong style={{ display: 'block', marginBottom: '0.5rem', color: msg.role === 'assistant' ? 'var(--primary)' : 'var(--foreground)' }}>{msg.role === 'assistant' ? 'Sarah' : 'You'}</strong>
                 <p style={{ fontSize: '0.9rem', color: 'var(--foreground-muted)' }}>{msg.content}</p>
               </div>

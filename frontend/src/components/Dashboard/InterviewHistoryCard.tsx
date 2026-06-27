@@ -2,28 +2,14 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, Play, FileText, ChevronRight, Loader2, RotateCcw } from 'lucide-react';
 import { RetryModal } from './RetryModal';
-
-interface InterviewAnalysis {
-  hire_verdict?: string;
-  detected_gaps?: string[];
-}
-
-interface Interview {
-  sessionId: string;
-  created_at: string;
-  analysis?: InterviewAnalysis;
-  history?: Array<{ role: string; content: string }>;
-  dropbox_audio_url?: string;
-  finalized?: boolean;
-  finalization_error?: string;
-}
+import { InterviewRecord, AnalysisData } from '@/types/interview';
 
 interface InterviewHistoryCardProps {
-  interview: Interview;
-  onViewAnalysis: (interview: Interview) => void;
-  onPlayAudio: (interview: Interview) => void;
-  onViewTranscript: (interview: Interview) => void;
-  onRetryFinalize?: (interview: Interview) => void;
+  interview: InterviewRecord;
+  onViewAnalysis: (interview: InterviewRecord) => void;
+  onPlayAudio: (interview: InterviewRecord) => void;
+  onViewTranscript: (interview: InterviewRecord) => void;
+  onRetryFinalize?: (interview: InterviewRecord) => void;
   onRetryStarted?: (newSessionId: string, focusGaps: string[]) => void;
 }
 
@@ -49,7 +35,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
     ? interview.analysis!.hire_verdict 
     : (hasError ? 'Failed' : 'Processing');
   
-  const detectedGaps = interview.analysis?.detected_gaps || [];
+  const detectedGaps = interview.analysis?.skill_gaps || [];
   const hasGaps = detectedGaps.length > 0;
   
   const verdictStyles = {
