@@ -57,6 +57,22 @@ async def update_user_dropbox(user_id: str, dropbox_data: dict):
         upsert=True,
     )
 
+async def get_user_resume(user_id: str):
+    user = await db.users.find_one({"user_id": user_id}, {"resume_url": 1, "resume_filename": 1})
+    if user:
+        return {
+            "resume_url": user.get("resume_url"),
+            "resume_filename": user.get("resume_filename")
+        }
+    return None
+
+async def set_user_resume(user_id: str, resume_url: str, resume_filename: str):
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"resume_url": resume_url, "resume_filename": resume_filename}},
+        upsert=True
+    )
+
 async def get_session(session_id: str):
     return await db.interviews.find_one({"sessionId": session_id})
 
