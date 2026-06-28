@@ -11,6 +11,7 @@ import {
   History,
   CheckCircle2,
   Send,
+  X,
 } from "lucide-react";
 import { CodeEditor } from "@/components/CodeEditor";
 import { useInterviewRecorder } from "@/hooks/useInterviewRecorder";
@@ -24,6 +25,7 @@ import { ProgressDashboard } from "@/components/Dashboard/ProgressDashboard";
 import { API_BASE, authHeaders } from "@/utils/apiConfig";
 import { useAuth } from "@/context/AuthContext";
 import { LoginScreen } from "@/components/LoginScreen";
+import { InterviewRecord, UserProgress } from "@/types/interview";
 
 interface EditorConfig {
   language: string;
@@ -50,21 +52,6 @@ const PERSONAS = [
   { id: "Challenging", label: "Challenging" },
   { id: "Experienced Peer", label: "Experienced Peer" },
 ];
-
-interface UserProgress {
-  total_interviews: number;
-  skill_gaps: string[];
-}
-
-interface InterviewRecord {
-  sessionId: string;
-  created_at: string;
-  analysis?: { hire_verdict?: string };
-  history?: Array<{ role: string; content: string }>;
-  dropbox_audio_url?: string;
-  finalized?: boolean;
-  finalization_error?: string;
-}
 
 export default function InterviewPage() {
   // FIX 1: destructure sessionExpired and logout from useAuth
@@ -785,34 +772,27 @@ export default function InterviewPage() {
         )}
         
         {showTranscript && selectedInterview && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 100,
-            width: '100%',
-            maxWidth: '640px',
-            background: 'var(--background-alt)',
-            borderLeft: '1px solid var(--border)',
-            padding: '2rem',
-            overflowY: 'auto'
-          }}>
-            <button className="secondary" onClick={() => setShowTranscript(false)} style={{ marginBottom: '1rem' }}>Close</button>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Transcript</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {selectedInterview.history?.map((msg, index) => (
-                <div key={index} style={{
-                    padding: '1rem',
-                    borderRadius: 'var(--radius-md)',
-                    background: msg.role === 'assistant' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.03)'
-                }}>
-                    <strong style={{ display: 'block', marginBottom: '0.5rem', color: msg.role === 'assistant' ? 'var(--primary)' : 'var(--foreground)' }}>
-                        {msg.role === 'assistant' ? 'Sarah' : 'You'}
+          <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-sm">
+            <div className="h-full w-full max-w-[640px] bg-zinc-900 border-l border-zinc-800 p-8 overflow-y-auto shadow-2xl animate-slide-in-right">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-zinc-100">Transcript</h2>
+                <button 
+                  onClick={() => setShowTranscript(false)}
+                  className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-zinc-100"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="flex flex-col gap-4">
+                {selectedInterview.history?.map((msg, index) => (
+                  <div key={index} className={`p-4 rounded-xl ${msg.role === 'assistant' ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-zinc-800/50 border border-zinc-700/50'}`}>
+                    <strong className={`block mb-1 text-sm ${msg.role === 'assistant' ? 'text-indigo-400' : 'text-zinc-100'}`}>
+                      {msg.role === 'assistant' ? 'Sarah' : 'You'}
                     </strong>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--foreground-muted)' }}>{msg.content}</p>
-                </div>
-              ))}
+                    <p className="text-sm text-zinc-300 leading-relaxed">{msg.content}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
