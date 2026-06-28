@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   Loader2,
   User,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import { InterviewHistoryCard } from "@/components/Dashboard/InterviewHistoryCard";
 import { AudioPlayerModal } from "@/components/Dashboard/AudioPlayerModal";
@@ -21,8 +23,6 @@ import { LoginScreen } from "@/components/LoginScreen";
 import { TutorPanel } from "@/components/Dashboard/TutorPanel";
 import { InterviewRecord, UserProgress } from "@/types/interview";
 
-
-// Augment Window so we don't need `as any`
 declare global {
   interface Window {
     currentSessionId?: string;
@@ -60,7 +60,6 @@ export default function DashboardPage() {
 
   const [interviewHistory, setInterviewHistory] = useState<InterviewRecord[]>([]);
 
-  // --- URL State Management ---
   const tab = searchParams.get("tab") || "history";
   const sessionId = searchParams.get("sessionId");
   const view = searchParams.get("view");
@@ -79,17 +78,15 @@ export default function DashboardPage() {
 
   const closeView = () => updateParams({ view: null, sessionId: null, msgIndex: null });
 
-  // Add this effect near your other useEffects
-useEffect(() => {
-  if (sessionId) {
-    window.currentSessionId = sessionId;
-  }
-}, [sessionId]);
+  useEffect(() => {
+    if (sessionId) {
+      window.currentSessionId = sessionId;
+    }
+  }, [sessionId]);
 
-// Then simplify setTutorSession — no window mutation needed here
-const setTutorSession = (id: string, index: number) => {
-  updateParams({ sessionId: id, view: "tutor", msgIndex: index.toString() });
-};
+  const setTutorSession = (id: string, index: number) => {
+    updateParams({ sessionId: id, view: "tutor", msgIndex: index.toString() });
+  };
 
   const fetchProgress = useCallback(async () => {
     if (!userId) return;
@@ -154,7 +151,7 @@ const setTutorSession = (id: string, index: number) => {
         setIsLoading(false);
         return;
       }
-      
+
       router.push(`/interview/${res.data.sessionId}`);
     } catch (err) {
       console.error("Failed to start interview", err);
@@ -179,10 +176,9 @@ const setTutorSession = (id: string, index: number) => {
     })();
   }, [fetchProgress, fetchHistory, accessToken, isInitialized, userId]);
 
-  if (!isInitialized) return <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f172a", color: "white" }}>Loading...</div>;
+  if (!isInitialized) return <div className="h-screen flex items-center justify-center bg-neutral-950 text-slate-200"><Loader2 className="animate-spin text-primary" /></div>;
   if (!userId || !accessToken) return <LoginScreen />;
 
-  // Derive tutor session data from URL params
   const selectedTutorSession = (sessionId && msgIndex && selectedInterview?.history) ? (() => {
     const idx = parseInt(msgIndex);
     const msg = selectedInterview.history![idx];
@@ -197,106 +193,200 @@ const setTutorSession = (id: string, index: number) => {
   })() : null;
 
   return (
-    <div className="container">
+    <div className="min-h-screen w-full bg-[#0a0a0c] text-slate-100 selection:bg-primary/30 antialiased">
       {sessionExpired && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(2, 6, 23, 0.9)", backdropFilter: "blur(12px)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div className="glass-panel" style={{ maxWidth: "400px", textAlign: "center" }}>
-            <h2 style={{ marginBottom: "1rem" }}>Session Expired</h2>
-            <button className="secondary" style={{ flex: 1 }} onClick={logout}>Logout</button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[10000] flex items-center justify-center p-4">
+          <div className="bg-neutral-900 border border-white/10 max-w-[400px] w-full p-8 text-center rounded-2xl shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6 tracking-tight text-white">Session Expired</h2>
+            <button className="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-all font-semibold active:scale-[0.98]" onClick={logout}>Logout</button>
           </div>
         </div>
       )}
 
-      <div className="layout-conversational" style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <header style={{ width: "100%", maxWidth: "900px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", padding: "0 1rem" }}>
-          <h1 style={{ fontSize: "1.5rem", background: "linear-gradient(to right, #818cf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontWeight: 800, cursor: "pointer" }} onClick={() => router.push("/")}>MockMe.AI</h1>
+      <div className="w-full mx-auto max-w-7xl px-4 py-8">
+        <header className="flex items-center justify-between mb-12 border-b border-white/[0.04] pb-6">
+          <h1 
+            className="text-2xl font-black bg-gradient-to-r from-primary via-purple-400 to-indigo-400 bg-clip-text text-transparent cursor-pointer hover:opacity-90 transition-opacity tracking-tight" 
+            onClick={() => router.push("/")}
+          >
+            MockMe.AI
+          </h1>
           <button 
             onClick={() => router.push("/profile")} 
-            className="secondary" 
-            style={{ padding: "0.5rem 1rem", borderRadius: "20px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 500 }}
+            className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] hover:bg-white/[0.08] text-slate-200 rounded-full text-sm font-semibold transition-all border border-white/[0.06] hover:border-white/[0.12] active:scale-95"
           >
-            <User size={16} /> Profile
+            <User size={15} className="text-slate-400" /> Profile
           </button>
         </header>
 
         {!showJDScreen ? (
-          <div className="glass-panel text-center" style={{ maxWidth: "900px", width: "95%", maxHeight: "90vh", overflowY: "auto" }}>
-            {errorMsg && <div style={{ color: "var(--danger)", marginBottom: "1rem" }}>{errorMsg}</div>}
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", textAlign: "left", marginBottom: "3rem" }}>
-              <div className="glass-panel" style={{ padding: "2rem", background: "rgba(255,255,255,0.02)" }}>
-                <h2 style={{ display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "0.85rem", fontWeight: 700, marginBottom: "1.25rem", color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}><BarChart3 size={18} color="var(--primary)" /> Performance</h2>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}><span style={{ fontSize: "3rem", fontWeight: 800, color: "var(--foreground)" }}>{userProgress?.total_interviews || 0}</span><span style={{ color: "var(--foreground-muted)", fontWeight: 500 }}>Sessions</span></div>
+          <div className="space-y-10">
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gradient-to-br from-neutral-900 to-neutral-900/40 border border-white/[0.05] shadow-xl p-6 rounded-2xl backdrop-blur-md">
+                <div className="flex items-center gap-2.5 mb-4 text-primary">
+                  <BarChart3 size={18} />
+                  <h2 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Performance</h2>
+                </div>
+                <div className="flex items-baseline gap-2.5">
+                  <span className="text-5xl font-black tracking-tight text-white">{userProgress?.total_interviews || 0}</span>
+                  <span className="text-slate-400 text-sm font-medium">Sessions completed</span>
+                </div>
               </div>
-              <div className="glass-panel" style={{ padding: "2rem", background: "rgba(255,255,255,0.02)" }}>
-                <h2 style={{ display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "0.85rem", fontWeight: 700, marginBottom: "1.25rem", color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}><History size={18} color="var(--accent)" /> Recent Gaps</h2>
-                <div style={{ fontSize: "0.85rem", color: "var(--foreground-muted)" }}>
+
+              <div className="bg-gradient-to-br from-neutral-900 to-neutral-900/40 border border-white/[0.05] shadow-xl p-6 rounded-2xl backdrop-blur-md">
+                <div className="flex items-center gap-2.5 mb-4 text-purple-400">
+                  <History size={18} />
+                  <h2 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Recent Skill Gaps</h2>
+                </div>
+                <div className="flex flex-wrap gap-2 items-center min-h-[48px]">
                   {(userProgress?.skill_gaps?.length ?? 0) > 0 ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                      {userProgress!.skill_gaps.slice(0, 3).map((g, i) => <span key={i} style={{ background: "rgba(239,68,68,0.08)", color: "#fca5a5", padding: "4px 10px", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.1)", fontWeight: 500 }}>{g}</span>)}
-                      {userProgress!.skill_gaps.length > 3 && <span style={{ padding: "4px 10px", color: "var(--foreground-muted)" }}>+{userProgress!.skill_gaps.length - 3} more</span>}
-                    </div>
-                  ) : <p style={{ fontStyle: "italic", opacity: 0.7 }}>No gaps detected yet. Start an interview!</p>}
+                    <>
+                      {userProgress!.skill_gaps?.slice(0, 3)?.map((g, i) => (
+                        <span key={i} className="px-3 py-1 bg-white/[0.04] text-slate-200 text-xs font-medium rounded-lg border border-white/[0.08] shadow-sm">
+                          {g}
+                        </span>
+                      ))}
+                      {(userProgress?.skill_gaps?.length ?? 0) > 3 && (
+                        <span className="text-xs text-slate-400 font-semibold pl-1">+{userProgress!.skill_gaps.length - 3} more</span>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-400/70 italic font-medium">No gaps detected yet. Start an interview!</p>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div style={{ textAlign: "left", marginBottom: "3rem" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", borderBottom: "1px solid var(--border)" }}>
-                <h3 style={{ fontSize: "1.25rem", fontWeight: 800 }}>Performance & History</h3>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button onClick={() => updateParams({ tab: "history" })} style={{ padding: "0.5rem 1rem", background: tab === "history" ? "rgba(129, 140, 248, 0.2)" : "transparent", border: tab === "history" ? "1px solid #818cf8" : "1px solid transparent", borderRadius: "8px", color: tab === "history" ? "#818cf8" : "var(--foreground-muted)", cursor: "pointer", fontSize: "0.9rem", fontWeight: tab === "history" ? 600 : 400, transition: "all 0.2s" }}>History</button>
-                  <button onClick={() => updateParams({ tab: "progress" })} style={{ padding: "0.5rem 1rem", background: tab === "progress" ? "rgba(129, 140, 248, 0.2)" : "transparent", border: tab === "progress" ? "1px solid #818cf8" : "1px solid transparent", borderRadius: "8px", color: tab === "progress" ? "#818cf8" : "var(--foreground-muted)", cursor: "pointer", fontSize: "0.9rem", fontWeight: tab === "progress" ? 600 : 400, transition: "all 0.2s" }}>Progress & Analytics</button>
+            {/* Main Content Area */}
+            <div className="bg-gradient-to-b from-neutral-900 to-neutral-950 border border-white/[0.06] rounded-2xl overflow-hidden shadow-2xl">
+              <div className="border-b border-white/[0.06] px-6 py-4 flex items-center justify-between bg-white/[0.02]">
+                <h3 className="text-base font-bold text-white tracking-wide">Dashboard</h3>
+                <div className="flex p-1 bg-black/30 rounded-xl border border-white/[0.04]">
+                  <button 
+                    onClick={() => updateParams({ tab: "history" })} 
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide uppercase transition-all ${tab === "history" ? "bg-primary text-white shadow-md shadow-primary/20" : "text-slate-400 hover:text-slate-200"}`}
+                  >
+                    History
+                  </button>
+                  <button 
+                    onClick={() => updateParams({ tab: "progress" })} 
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide uppercase transition-all ${tab === "progress" ? "bg-primary text-white shadow-md shadow-primary/20" : "text-slate-400 hover:text-slate-200"}`}
+                  >
+                    Analytics
+                  </button>
                 </div>
               </div>
 
-              {tab === "history" ? (
-                <div>
-                  <div style={{ fontSize: "0.8rem", color: "var(--foreground-muted)", fontWeight: 500, marginBottom: "1rem" }}>{interviewHistory.length} Recorded Sessions</div>
-                  <div style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <div className="p-6">
+                {tab === "history" ? (
+                  <div className="space-y-4">
                     {interviewHistory.length > 0 ? (
-                      interviewHistory.map((inv) => (
-                        <InterviewHistoryCard
-                          key={inv.sessionId}
-                          interview={inv}
-                          onPlayAudio={(i) => updateParams({ sessionId: i.sessionId, view: "audio" })}
-                          onViewAnalysis={(i) => updateParams({ sessionId: i.sessionId, view: "analysis" })}
-                          onViewTranscript={(i) => updateParams({ sessionId: i.sessionId, view: "transcript" })}
-                          onRetryFinalize={handleRetryAftersave}
-                          onRetryStarted={(_newSessionId) => router.push(`/interview/${_newSessionId}`)}
-                        />
-                      ))
-                    ) : <div style={{ textAlign: "center", padding: "3rem", background: "rgba(255,255,255,0.02)", borderRadius: "var(--radius-lg)", border: "1px dashed var(--border)", color: "var(--foreground-muted)", fontStyle: "italic" }}>No previous sessions found.</div>}
+                      <div className="flex flex-col gap-2 max-h-[520px] overflow-y-auto pr-2 custom-scrollbar">
+                        {interviewHistory.map((inv) => (
+                          <InterviewHistoryCard
+                            key={inv.sessionId}
+                            interview={inv}
+                            onPlayAudio={(i) => updateParams({ sessionId: i.sessionId, view: "audio" })}
+                            onViewAnalysis={(i) => updateParams({ sessionId: i.sessionId, view: "analysis" })}
+                            onViewTranscript={(i) => updateParams({ sessionId: i.sessionId, view: "transcript" })}
+                            onRetryFinalize={handleRetryAftersave}
+                            onRetryStarted={(_newSessionId) => router.push(`/interview/${_newSessionId}`)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-20 text-center bg-white/[0.01] rounded-2xl border border-dashed border-white/[0.08]">
+                        <p className="text-slate-400/80 italic text-sm font-medium">No previous sessions found.</p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ) : <ProgressDashboard />}
+                ) : (
+                  <ProgressDashboard />
+                )}
+              </div>
             </div>
 
-            <button onClick={() => setShowJDScreen(true)} className="mic-btn" style={{ margin: "0 auto", width: "280px", borderRadius: "var(--radius-lg)", height: "64px", fontSize: "1rem", fontWeight: 700, letterSpacing: "0.02em", boxShadow: "0 20px 40px -10px var(--primary-glow)" }}>Start Daily Practice</button>
+            <div className="flex justify-center pt-2">
+              <button 
+                onClick={() => setShowJDScreen(true)} 
+                className="group relative px-10 py-4 bg-primary hover:bg-primary-hover text-white rounded-full font-extrabold text-base transition-all hover:scale-[1.03] active:scale-[0.98] flex items-center gap-3 shadow-lg shadow-primary/20"
+              >
+                <Sparkles size={18} className="text-white group-hover:scale-110 transition-transform" />
+                Start Daily Practice
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="glass-panel" style={{ maxWidth: "600px", width: "90%" }}>
-            <h2 style={{ marginBottom: "1.5rem" }}>Interview Setup</h2>
-            <JDSelector value={jd} onChange={setJd} />
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>Resume (PDF/Docx)</label>
-              {(pendingResume || storedResumeFilename) ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.75rem 1rem", color: "white", fontSize: "0.9rem" }}>
-                  <CheckCircle2 size={20} color="var(--accent)" />
-                  <span style={{ flex: 1 }}>{pendingResume ? <span>{pendingResume.name}</span> : <span>Resume Loaded: {storedResumeFilename} ✅</span>}</span>
-                  <button onClick={() => setPendingResume(null)} className="secondary" style={{ marginLeft: 'auto', padding: '0.25rem 0.75rem', fontSize: '0.8rem', minHeight: 'auto', lineHeight: '1' }}>Change</button>
+          /* Interview Setup Screen */
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center gap-4 mb-8">
+              <button 
+                onClick={() => setShowJDScreen(false)} 
+                className="p-2 bg-white/[0.03] hover:bg-white/[0.08] rounded-full transition-all border border-white/[0.06] active:scale-95"
+              >
+                <ChevronRight className="rotate-180 text-slate-300" size={18} />
+              </button>
+              <h2 className="text-2xl font-black tracking-tight text-white">Interview Setup</h2>
+            </div>
+
+            <div className="bg-gradient-to-b from-neutral-900 to-neutral-950 border border-white/[0.06] shadow-2xl p-8 rounded-2xl space-y-8">
+              {errorMsg && <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs font-semibold tracking-wide">{errorMsg}</div>}
+
+              <JDSelector value={jd} onChange={setJd} />
+
+              <div className="space-y-3">
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400">Resume (PDF / Docx)</label>
+                {(pendingResume || storedResumeFilename) ? (
+                  <div className="flex items-center gap-3 bg-white/[0.02] p-4 rounded-xl border border-white/[0.06]">
+                    <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                    <span className="flex-1 truncate text-sm text-slate-200 font-medium">{pendingResume ? pendingResume.name : `${storedResumeFilename}`}</span>
+                    <button onClick={() => setPendingResume(null)} className="text-xs text-primary hover:underline font-semibold tracking-wide">Change</button>
+                  </div>
+                ) : (
+                  <input 
+                    type="file" 
+                    accept=".pdf,.doc,.docx" 
+                    onChange={(e) => setPendingResume(e.target.files?.[0] || null)} 
+                    className="w-full bg-white/[0.01] border border-white/[0.06] rounded-xl p-3 text-sm text-slate-400 file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:uppercase file:tracking-wide file:bg-white/[0.06] file:text-white hover:file:bg-white/[0.12] file:transition-colors hover:bg-white/[0.03] transition-colors"
+                  />
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-400">Interview Persona</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {PERSONAS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedPersona(p)}
+                      className={`py-2.5 px-3 text-xs font-bold rounded-xl border transition-all ${
+                        selectedPersona.id === p.id 
+                          ? "bg-primary/10 border-primary text-primary shadow-inner" 
+                          : "bg-white/[0.01] border-white/[0.06] text-slate-400 hover:border-white/[0.15] hover:text-slate-200"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
                 </div>
-              ) : <input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setPendingResume(e.target.files?.[0] || null)} style={{ width: "100%", background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.75rem 1rem", color: "white", fontSize: "0.9rem" }} />}
-            </div>
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>Interview Persona</label>
-              <select value={selectedPersona.id} onChange={(e) => setSelectedPersona(PERSONAS.find(p => p.id === e.target.value) || PERSONAS[0])} style={{ width: "100%", background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.75rem 1rem", color: "white", fontSize: "0.9rem" }}>
-                {PERSONAS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-              </select>
-            </div>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button onClick={() => setShowJDScreen(false)} className="secondary" style={{ flex: 1 }}>Back</button>
-              <button onClick={requestStartInterview} disabled={isLoading} style={{ flex: 2 }}>{isLoading ? <Loader2 className="animate-spin" style={{ margin: "0 auto" }} /> : "Begin Interview"}</button>
+              </div>
+
+              <div className="flex gap-4 pt-4 border-t border-white/[0.04]">
+                <button 
+                  onClick={() => setShowJDScreen(false)} 
+                  className="flex-1 py-3.5 bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 rounded-xl font-bold text-sm transition-all border border-white/[0.04] active:scale-[0.98]"
+                >
+                  Back
+                </button>
+                <button 
+                  onClick={requestStartInterview} 
+                  disabled={isLoading} 
+                  className="flex-[2] py-3.5 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/10 disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
+                  {isLoading ? <Loader2 className="animate-spin" size={16} /> : "Begin Interview"}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -311,16 +401,30 @@ const setTutorSession = (id: string, index: number) => {
       )}
       {view === "audio" && selectedInterview?.dropbox_audio_url && <AudioPlayerModal audioUrl={selectedInterview.dropbox_audio_url} onClose={closeView} />}
       {view === "analysis" && selectedInterview && <AnalysisDrawer interview={selectedInterview} onClose={closeView} />}
-      
+
       {view === "transcript" && selectedInterview && (
-        <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 100, width: '100%', maxWidth: '640px', background: 'var(--background-alt)', borderLeft: '1px solid var(--border)', padding: '2rem', overflowY: 'auto' }}>
-          <button className="secondary" onClick={closeView} style={{ marginBottom: '1rem' }}>Close</button>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Transcript</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl bg-neutral-950/95 backdrop-blur-2xl border-l border-white/[0.08] p-8 overflow-y-auto shadow-2xl transition-all">
+          <div className="flex items-center justify-between mb-8 border-b border-white/[0.04] pb-4">
+            <h2 className="text-xl font-extrabold tracking-tight text-white">Transcript Analysis</h2>
+            <button className="p-2 hover:bg-white/5 text-slate-400 hover:text-white rounded-full transition-colors" onClick={closeView}>
+              <ChevronRight size={22} />
+            </button>
+          </div>
+          <div className="space-y-4">
             {selectedInterview.history?.map((msg, index) => (
-              <div key={index} onClick={() => { if (msg.role === 'assistant' || (msg.role === 'user' && index > 0 && selectedInterview.history![index-1].role === 'assistant')) { setTutorSession(selectedInterview.sessionId, index); } }} style={{ padding: '1rem', borderRadius: 'var(--radius-md)', background: msg.role === 'assistant' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.03)', cursor: 'pointer', transition: 'background 0.2s ease' }}>
-                <strong style={{ display: 'block', marginBottom: '0.5rem', color: msg.role === 'assistant' ? 'var(--primary)' : 'var(--foreground)' }}>{msg.role === 'assistant' ? 'Sarah' : 'You'}</strong>
-                <p style={{ fontSize: '0.9rem', color: 'var(--foreground-muted)' }}>{msg.content}</p>
+              <div 
+                key={index} 
+                onClick={() => { if (msg.role === 'assistant' || (msg.role === 'user' && index > 0 && selectedInterview.history![index-1].role === 'assistant')) { setTutorSession(selectedInterview.sessionId, index); } }} 
+                className={`p-4 rounded-xl cursor-pointer border transition-all ${
+                  msg.role === 'assistant' 
+                    ? 'bg-primary/5 border-primary/20 text-slate-100' 
+                    : 'bg-white/[0.01] border-white/[0.05] text-slate-400 hover:text-slate-300'
+                } hover:border-white/[0.15] hover:shadow-md active:scale-[0.995]`}
+              >
+                <strong className={`block mb-1.5 text-[10px] font-extrabold uppercase tracking-widest ${msg.role === 'assistant' ? 'text-primary' : 'text-slate-400'}`}>
+                  {msg.role === 'assistant' ? 'Sarah (AI Interviewer)' : 'You'}
+                </strong>
+                <p className="text-sm leading-relaxed font-medium">{msg.content}</p>
               </div>
             ))}
           </div>

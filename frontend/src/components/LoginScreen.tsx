@@ -21,87 +21,42 @@ export const LoginScreen = () => {
   };
 
   return (
-    <div className="container layout-conversational" style={{ background: 'var(--background)', minHeight: '100vh', width: '100%' }}>
+    <div className="min-h-screen w-full flex items-center justify-center p-4">
       <div 
-        className="glass-panel text-center" 
-        style={{ 
-          maxWidth: '480px', 
-          width: '90%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1.5rem',
-          padding: '2.5rem',
-          boxShadow: '0 40px 100px -20px rgba(0,0,0,0.8), 0 0 80px -10px var(--primary-glow)',
-          margin: '0 auto',
-        }}
+        className="glass-effect text-center flex flex-col items-center gap-6 p-10 max-w-[480px] w-full rounded-xl shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8),0_0_80px_-10px_var(--color-primary-glow)]"
       >
-        <div style={{ 
-          width: '72px', 
-          height: '72px', 
-          background: 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)',
-          borderRadius: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '0.5rem',
-          boxShadow: '0 10px 20px -5px var(--primary-glow)'
-        }}>
-          <Sparkles size={36} color="white" />
+        <div className="w-[72px] h-[72px] bg-gradient-to-br from-primary to-purple-500 rounded-[20px] flex items-center justify-center mb-2 shadow-[0_10px_20px_-5px_var(--color-primary-glow)]">
+          <Sparkles size={36} className="text-white" />
         </div>
 
         <div>
-            <h1 style={{ 
-              fontSize: '2rem', 
-              marginBottom: '0.75rem',
-              background: 'linear-gradient(to right, #fff, #94a3b8)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontWeight: 900,
-              lineHeight: 1.2
-            }}>
+            <h1 className="text-[2rem] mb-[0.75rem] bg-gradient-to-r from-white to-foreground-muted bg-clip-text text-transparent font-black leading-[1.2]">
                 MockMe.AI
             </h1>
-            <p style={{ 
-              color: 'var(--foreground-muted)', 
-              fontSize: '0.95rem', 
-              maxWidth: '300px', 
-              margin: '0 auto',
-              lineHeight: 1.5
-            }}>
+            <p className="text-foreground-muted text-[0.95rem] max-w-[300px] mx-auto leading-[1.5]">
                 Master your next technical interview with AI-powered simulations.
             </p>
         </div>
 
-        <div style={{ width: '100%', height: '1px', background: 'var(--border)', margin: '0.5rem 0' }} />
+        <div className="w-full h-[1px] bg-border my-2" />
 
         <button 
           onClick={loginWithDropbox} 
           disabled={isLoading} 
-          style={{ 
-            width: '100%',
-            height: '56px',
-            fontSize: '1rem',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 10px 20px -5px var(--primary-glow)',
-            minHeight: '44px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
+          className="w-full h-[56px] text-[1rem] rounded-lg shadow-[0_10px_20px_-5px_var(--color-primary-glow)] flex items-center justify-center transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
         >
           {isLoading ? (
             <Loader2 className="animate-spin" size={20} />
           ) : (
             <>
               <LogIn size={20} />
-              <span style={{ marginLeft: '0.5rem' }}>Continue with Dropbox</span>
+              <span className="ml-2">Continue with Dropbox</span>
             </>
           )}
         </button>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--foreground-muted)', fontSize: '0.8rem' }}>
-            <ShieldCheck size={14} color="var(--accent)" />
+        <div className="flex items-center gap-2 text-foreground-muted text-[0.8rem]">
+            <ShieldCheck size={14} className="text-accent" />
             <span>Secure authentication via Dropbox OAuth</span>
         </div>
       </div>

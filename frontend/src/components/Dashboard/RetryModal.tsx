@@ -74,182 +74,80 @@ export const RetryModal: React.FC<RetryModalProps> = ({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(2, 6, 23, 0.7)",
-        backdropFilter: "blur(8px)",
-        zIndex: 1000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "1rem",
-      }}
+      className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[1000] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="glass-panel"
-        style={{
-          maxWidth: "500px",
-          width: "100%",
-          maxHeight: "80vh",
-          overflowY: "auto",
-          position: "relative",
-        }}
+        className="glass-panel max-w-[500px] w-full max-h-[80vh] overflow-y-auto relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "1.5rem",
-            paddingBottom: "1rem",
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 700 }}>
-            Retry Interview: Focus on Weaknesses
-          </h2>
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
+          <h2 className="text-xl font-bold">Retry Interview: Focus on Weaknesses</h2>
           <button
             onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--foreground-muted)",
-              padding: "0.5rem",
-            }}
+            className="p-2 rounded-md bg-secondary hover:bg-secondary-hover text-foreground-muted hover:text-foreground transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Info */}
-        <div
-          style={{
-            padding: "1rem",
-            background: "rgba(99, 102, 241, 0.1)",
-            borderRadius: "8px",
-            marginBottom: "1.5rem",
-            border: "1px solid rgba(99, 102, 241, 0.2)",
-            display: "flex",
-            gap: "0.75rem",
-            alignItems: "flex-start",
-          }}
-        >
-          <AlertCircle size={20} style={{ color: "#6366f1", flexShrink: 0, marginTop: "0.125rem" }} />
-          <p style={{ fontSize: "0.85rem", color: "var(--foreground)", margin: 0 }}>
+        <div className="p-4 bg-indigo-500/10 rounded-lg mb-6 border border-indigo-500/20 flex gap-3 items-start">
+          <AlertCircle size={20} className="text-indigo-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-foreground">
             Select the areas where you struggled in the previous interview. The AI will focus its
             questions on these specific topics to help you improve.
           </p>
         </div>
 
         {/* Gap Selection */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "1rem",
-            }}
-          >
-            <label style={{ fontSize: "0.9rem", fontWeight: 600 }}>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <label className="text-sm font-semibold">
               Select Focus Areas ({selectedGaps.size} of {gaps.length})
             </label>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+            <div className="flex gap-2">
               <button
                 onClick={selectAll}
-                style={{
-                  fontSize: "0.75rem",
-                  padding: "0.35rem 0.75rem",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  color: "var(--foreground-muted)",
-                }}
+                className="text-xs px-3 py-1 bg-white/5 border border-border rounded cursor-pointer text-foreground-muted hover:text-foreground"
               >
                 Select All
               </button>
               <button
                 onClick={clearAll}
-                style={{
-                  fontSize: "0.75rem",
-                  padding: "0.35rem 0.75rem",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  color: "var(--foreground-muted)",
-                }}
+                className="text-xs px-3 py-1 bg-white/5 border border-border rounded cursor-pointer text-foreground-muted hover:text-foreground"
               >
                 Clear
               </button>
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <div className="flex flex-col gap-3">
             {gaps.length > 0 ? (
               gaps.map((gap) => (
                 <label
                   key={gap}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                    padding: "0.75rem",
-                    background: selectedGaps.has(gap) ? "rgba(16, 185, 129, 0.1)" : "rgba(255,255,255,0.02)",
-                    border: selectedGaps.has(gap)
-                      ? "1px solid rgba(16, 185, 129, 0.3)"
-                      : "1px solid var(--border)",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
+                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border ${
+                    selectedGaps.has(gap)
+                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-semibold"
+                      : "bg-white/2 border-transparent text-foreground hover:bg-white/5"
+                  }`}
                 >
                   <input
                     type="checkbox"
                     checked={selectedGaps.has(gap)}
                     onChange={() => toggleGap(gap)}
-                    style={{
-                      accentColor: "#10b981",
-                      cursor: "pointer",
-                      width: "18px",
-                      height: "18px",
-                    }}
+                    className="w-5 h-5 accent-emerald-500 cursor-pointer"
                   />
-                  <span
-                    style={{
-                      fontSize: "0.9rem",
-                      fontWeight: selectedGaps.has(gap) ? 600 : 400,
-                      color: selectedGaps.has(gap) ? "#10b981" : "var(--foreground)",
-                    }}
-                  >
-                    {gap}
-                  </span>
+                  <span className="text-sm">{gap}</span>
                   {selectedGaps.has(gap) && (
-                    <CheckCircle2
-                      size={16}
-                      style={{ color: "#10b981", marginLeft: "auto" }}
-                    />
+                    <CheckCircle2 size={16} className="ml-auto text-emerald-400" />
                   )}
                 </label>
               ))
             ) : (
-              <div
-                style={{
-                  padding: "2rem",
-                  textAlign: "center",
-                  color: "var(--foreground-muted)",
-                  fontSize: "0.9rem",
-                }}
-              >
+              <div className="p-8 text-center text-foreground-muted text-sm">
                 No gaps detected in previous interview
               </div>
             )}
@@ -258,41 +156,30 @@ export const RetryModal: React.FC<RetryModalProps> = ({
 
         {/* Error */}
         {error && (
-          <div
-            style={{
-              padding: "0.75rem",
-              background: "rgba(239, 68, 68, 0.1)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              borderRadius: "8px",
-              color: "#fca5a5",
-              fontSize: "0.85rem",
-              marginBottom: "1rem",
-            }}
-          >
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm mb-4">
             {error}
           </div>
         )}
 
         {/* Actions */}
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="secondary"
-            style={{ flex: 1 }}
+            className="flex-1 secondary"
             disabled={isLoading}
           >
             Cancel
           </button>
           <button
             onClick={handleRetry}
-            style={{ flex: 1 }}
+            className="flex-1 bg-primary text-white font-bold rounded-lg disabled:opacity-50"
             disabled={isLoading || selectedGaps.size === 0}
           >
             {isLoading ? (
-              <>
+              <div className="flex items-center justify-center gap-2">
                 <Loader2 size={16} className="animate-spin" />
                 Starting...
-              </>
+              </div>
             ) : (
               `Start Focused Interview (${selectedGaps.size})`
             )}

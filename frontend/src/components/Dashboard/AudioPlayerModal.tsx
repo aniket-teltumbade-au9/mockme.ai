@@ -47,97 +47,50 @@ export const AudioPlayerModal: React.FC<AudioPlayerModalProps> = ({ audioUrl, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" style={{ zIndex: 100 }}>
-      <div className="glass-panel" style={{ 
-        width: '100%', 
-        maxWidth: '500px', 
-        position: 'relative',
-        margin: '1rem',
-        padding: '1.5rem'
-      }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="glass-panel w-full max-w-[500px] relative m-4 p-6">
         <button 
           onClick={onClose} 
-          style={{ 
-            position: 'absolute', 
-            top: '1rem', 
-            right: '1rem', 
-            background: 'transparent', 
-            padding: '0.5rem',
-            minHeight: '44px',
-            minWidth: '44px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
+          className="absolute top-4 right-4 bg-transparent p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
           aria-label="Close"
         >
             <X size={20} />
         </button>
         
-        <h3 style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 600 }}>Interview Recording</h3>
+        <h3 className="mb-6 text-[1.1rem] font-semibold">Interview Recording</h3>
         
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ 
-              fontSize: '2.5rem', 
-              fontWeight: 800, 
-              color: 'var(--primary)', 
-              marginBottom: '0.5rem',
-              minWidth: '120px'
-            }}>
+        <div className="text-center mb-8">
+            <div className="text-4xl font-extrabold text-primary mb-2 min-w-[120px]">
                 {formatTime(currentTime)}
             </div>
-            <div style={{ color: '#64748b', fontSize: '0.9rem' }}>of {formatTime(duration)}</div>
+            <div className="text-slate-400 text-sm">of {formatTime(duration)}</div>
         </div>
 
         <audio ref={audioRef} src={streamingUrl} onEnded={() => setIsPlaying(false)} />
 
-        <div className="flex justify-center items-center gap-4" style={{ flexWrap: 'wrap' }}>
+        <div className="flex justify-center items-center gap-4 flex-wrap">
             <button 
               onClick={() => { if(audioRef.current) audioRef.current.currentTime -= 10 }} 
-              className="secondary" 
-              style={{ 
-                borderRadius: '50%', 
-                width: '50px', 
-                height: '50px', 
-                padding: '0', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                minHeight: '44px',
-                minWidth: '44px'
-              }}
+              className="secondary rounded-full w-[50px] h-[50px] p-0 flex items-center justify-center min-h-[44px] min-w-[44px]"
               aria-label="Rewind 10 seconds"
             >
                 <RotateCcw size={20} />
             </button>
             <button 
               onClick={togglePlayback} 
-              style={{ 
-                borderRadius: '50%', 
-                width: '70px', 
-                height: '70px', 
-                padding: '0', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                minHeight: '60px',
-                minWidth: '60px',
-                background: 'var(--primary)'
-              }}
+              className="rounded-full w-[70px] h-[70px] p-0 flex items-center justify-center min-h-[60px] min-w-[60px] bg-primary"
               aria-label={isPlaying ? "Pause" : "Play"}
             >
                 {isPlaying ? <Pause size={28} /> : <Play size={28} fill="white" />}
             </button>
-            <div style={{ width: '50px' }}></div>
+            <div className="w-[50px]"></div>
         </div>
 
-        <div style={{ marginTop: '2rem', width: '100%', height: '8px', background: 'var(--secondary)', borderRadius: '4px', overflow: 'hidden' }}>
-            <div style={{ 
-              height: '100%', 
-              background: 'var(--primary)', 
-              width: `${duration ? (currentTime / duration) * 100 : 0}%`,
-              transition: 'width 0.2s ease'
-            }}></div>
+        <div className="mt-8 w-full h-2 bg-secondary rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary transition-all duration-200"
+              style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+            ></div>
         </div>
       </div>
     </div>

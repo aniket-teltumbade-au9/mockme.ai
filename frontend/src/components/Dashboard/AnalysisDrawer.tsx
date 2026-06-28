@@ -107,37 +107,21 @@ interface AnalysisDrawerProps {
 function ScoreBar({ label, value }: { label: string; value?: number }) {
   const pct = ((value ?? 0) / 10) * 100;
   const color =
-    (value ?? 0) >= 8 ? "#10b981" : (value ?? 0) >= 5 ? "#f59e0b" : "#ef4444";
+    (value ?? 0) >= 8 ? "bg-emerald-400" : (value ?? 0) >= 5 ? "bg-amber-400" : "bg-red-400";
   return (
-    <div style={{ marginBottom: "0.6rem" }}>
+    <div className="mb-2">
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "0.75rem",
-          color: "#94a3b8",
-          marginBottom: "3px",
-        }}
+        className="flex justify-between text-[0.75rem] text-foreground-muted mb-1"
       >
         <span>{label}</span>
-        <span style={{ color, fontWeight: 700 }}>{value ?? "—"}/10</span>
+        <span className={`${color.replace('bg-', 'text-')} font-bold`}>{value ?? "—"}/10</span>
       </div>
       <div
-        style={{
-          height: "5px",
-          background: "rgba(255,255,255,0.07)",
-          borderRadius: "3px",
-          overflow: "hidden",
-        }}
+        className="h-1.5 bg-white/10 rounded-full overflow-hidden"
       >
         <div
-          style={{
-            height: "100%",
-            width: `${pct}%`,
-            background: color,
-            borderRadius: "3px",
-            transition: "width 0.4s ease",
-          }}
+          className={`h-full ${color} rounded-full transition-all duration-500`}
+          style={{ width: `${pct}%` }}
         />
       </div>
     </div>
@@ -153,100 +137,46 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
   
   if (!analysis) {
     return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 100,
-        width: '100%',
-        maxWidth: '640px',
-        background: 'var(--background-alt)',
-        borderLeft: '1px solid var(--border)',
-        padding: '2rem',
-        overflowY: 'auto'
-      }}>
-        <button className="secondary" onClick={onClose} style={{ marginBottom: '1rem' }}>
-          <X size={20} /> Close
+      <div className="fixed inset-0 right-0 z-[100] w-full max-w-[640px] bg-background/95 backdrop-blur-xl border-l border-border p-8 overflow-y-auto shadow-2xl">
+        <button className="p-2 hover:bg-secondary rounded-full transition-colors mb-4" onClick={onClose}>
+          <X size={24} />
         </button>
-        <p style={{ color: 'var(--foreground-muted)' }}>No analysis available for this interview.</p>
+        <p className="text-foreground-muted">No analysis available for this interview.</p>
       </div>
     );
   }
 
   return (
     <div 
-      style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 100,
-        width: '100%',
-        maxWidth: '640px',
-        background: 'var(--background-alt)',
-        borderLeft: '1px solid var(--border)',
-        boxShadow: '-10px 0 50px rgba(0,0,0,0.5)',
-        display: 'flex',
-        flexDirection: 'column',
-        animation: 'slideInRight 0.3s ease-out'
-      }}
+      className="fixed inset-y-0 right-0 z-[100] w-full max-w-[640px] bg-background-alt border-l border-border shadow-2xl flex flex-col animate-slide-in-right"
     >
       {/* Header */}
       <div 
-        style={{
-          padding: '1.25rem 1.5rem',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'rgba(15, 23, 42, 0.8)',
-          backdropFilter: 'blur(10px)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10
-        }}
+        className="p-5 border-b border-border flex justify-between items-center bg-white/5 backdrop-blur-md sticky top-0 z-10"
       >
         <div>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Interview Analysis</h2>
-          <p style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', fontFamily: 'var(--font-geist-mono)' }}>
+          <h2 className="text-xl font-black">Interview Analysis</h2>
+          <p className="text-xs text-foreground-muted font-mono">
             Session ID: {interview.sessionId.substring(0, 12)}...
           </p>
         </div>
         <button
           onClick={onClose}
-          className="secondary"
-          style={{ 
-            background: "transparent", 
-            padding: "0.5rem", 
-            borderRadius: '50%', 
-            width: '40px', 
-            height: '40px',
-            minHeight: '44px',
-            minWidth: '44px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
+          className="p-2 hover:bg-secondary rounded-full transition-colors"
           aria-label="Close analysis"
         >
           <X size={20} />
         </button>
       </div>
 
-      <div style={{ 
-        padding: '1.5rem', 
-        overflowY: 'auto', 
-        flex: 1,
-        maxHeight: 'calc(100vh - 120px)'
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="p-6 overflow-y-auto flex-1">
+        <div className="flex flex-col gap-8">
           {/* Hire Verdict */}
           {analysis.hire_verdict && (
             <section>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Hire Verdict</h3>
-              <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.03)' }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800 }}>{analysis.hire_verdict}</span>
+              <h3 className="text-sm font-bold mb-3 text-foreground uppercase tracking-wider">Hire Verdict</h3>
+              <div className="p-4 rounded-xl bg-white/5 border border-border">
+                <span className="text-xl font-black">{analysis.hire_verdict}</span>
               </div>
             </section>
           )}
@@ -254,23 +184,23 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
           {/* Overall Score */}
           {analysis.overall_score && (
             <section>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Overall Score</h3>
-              <div style={{ fontSize: '2rem', fontWeight: 800 }}>{analysis.overall_score}/100</div>
+              <h3 className="text-sm font-bold mb-3 text-foreground uppercase tracking-wider">Overall Score</h3>
+              <div className="text-5xl font-black text-primary">{analysis.overall_score}/100</div>
             </section>
           )}
 
           {/* Communication Assessment */}
           {analysis.communication_assessment && (
             <section>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Communication Assessment</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <h3 className="text-sm font-bold mb-3 text-foreground uppercase tracking-wider">Communication Assessment</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                 <ScoreBar label="Clarity" value={analysis.communication_assessment.clarity} />
                 <ScoreBar label="Structure" value={analysis.communication_assessment.structure} />
                 <ScoreBar label="Conciseness" value={analysis.communication_assessment.conciseness} />
                 <ScoreBar label="Confidence" value={analysis.communication_assessment.confidence} />
               </div>
               {analysis.communication_assessment.summary && (
-                <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--foreground-muted)' }}>{analysis.communication_assessment.summary}</p>
+                <p className="mt-4 text-sm text-foreground-muted leading-relaxed">{analysis.communication_assessment.summary}</p>
               )}
             </section>
           )}
@@ -278,67 +208,47 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
           {/* Tech Dive */}
           {analysis.states?.tech_dive && (
             <section>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Technical Deep Dive</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--foreground-muted)' }}>{analysis.states.tech_dive.summary}</p>
+              <h3 className="text-sm font-bold mb-3 text-foreground uppercase tracking-wider">Technical Deep Dive</h3>
+              <p className="text-sm text-foreground-muted leading-relaxed">{analysis.states.tech_dive.summary}</p>
             </section>
           )}
 
           {/* Coding Round */}
           {analysis.states?.coding_round && (
             <section>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--foreground)' }}>Coding Round</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--foreground-muted)' }}>{analysis.states.coding_round.feedback}</p>
+              <h3 className="text-sm font-bold mb-3 text-foreground uppercase tracking-wider">Coding Round</h3>
+              <p className="text-sm text-foreground-muted leading-relaxed">{analysis.states.coding_round.feedback}</p>
             </section>
           )}
 
           {/* Before/After Transformation */}
           {analysis.transformations && (
-            <section style={{ padding: '1rem', background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: 'var(--radius-sm)' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#d8b4fe' }}>🎯 Elite Answer Transformation</h3>
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.5rem' }}>Critical Moment:</div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--foreground)', fontStyle: 'italic' }}>{analysis.transformations.critical_moment}</p>
+            <section className="p-5 bg-primary/10 border border-primary/20 rounded-2xl">
+              <h3 className="text-sm font-bold mb-4 text-primary uppercase tracking-wider">🎯 Elite Answer Transformation</h3>
+              <div className="mb-6">
+                <div className="text-xs font-bold text-foreground-muted mb-2 uppercase">Critical Moment:</div>
+                <p className="text-sm text-foreground font-italic italic">{analysis.transformations.critical_moment}</p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="grid grid-cols-1 gap-6">
                 <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fca5a5', marginBottom: '0.5rem' }}>❌ Your Original Response:</div>
-                  <div style={{ 
-                    padding: '0.75rem', 
-                    background: 'rgba(239, 68, 68, 0.1)', 
-                    borderRadius: '0.5rem',
-                    border: '1px solid rgba(239, 68, 68, 0.2)',
-                    fontSize: '0.8rem',
-                    lineHeight: '1.4',
-                    color: 'var(--foreground-muted)',
-                    maxHeight: '200px',
-                    overflowY: 'auto'
-                  }}>
+                  <div className="text-xs font-bold text-red-400 mb-2 uppercase">❌ Your Original Response:</div>
+                  <div className="p-4 bg-red-400/10 border border-red-400/20 rounded-xl text-sm text-foreground-muted max-h-48 overflow-y-auto leading-relaxed">
                     {analysis.transformations.candidate_original}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#86efac', marginBottom: '0.5rem' }}>✅ Elite Staff-Level Response:</div>
-                  <div style={{ 
-                    padding: '0.75rem', 
-                    background: 'rgba(34, 197, 94, 0.1)', 
-                    borderRadius: '0.5rem',
-                    border: '1px solid rgba(34, 197, 94, 0.2)',
-                    fontSize: '0.8rem',
-                    lineHeight: '1.4',
-                    color: 'var(--foreground-muted)',
-                    maxHeight: '200px',
-                    overflowY: 'auto'
-                  }}>
+                  <div className="text-xs font-bold text-emerald-400 mb-2 uppercase">✅ Elite Staff-Level Response:</div>
+                  <div className="p-4 bg-emerald-400/10 border border-emerald-400/20 rounded-xl text-sm text-foreground-muted max-h-48 overflow-y-auto leading-relaxed">
                     {analysis.transformations.elite_response}
                   </div>
                 </div>
               </div>
 
               {analysis.transformations.why_better && (
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(59, 130, 246, 0.08)', borderRadius: '0.5rem', borderLeft: '3px solid #3b82f6' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#93c5fd', marginBottom: '0.5rem' }}>Why This Is Better:</div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', lineHeight: '1.5' }}>{analysis.transformations.why_better}</p>
+                <div className="mt-6 p-4 bg-blue-500/10 border-l-4 border-blue-500 rounded-r-xl">
+                  <div className="text-xs font-bold text-blue-400 mb-1 uppercase">Why This Is Better:</div>
+                  <p className="text-sm text-foreground-muted leading-relaxed">{analysis.transformations.why_better}</p>
                 </div>
               )}
             </section>
@@ -346,33 +256,33 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
 
           {/* Behavioral STAR Analysis */}
           {analysis.behavioral_star_analysis && analysis.behavioral_star_analysis.length > 0 && (
-            <section style={{ padding: '1rem', background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: 'var(--radius-sm)' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#d8b4fe' }}>🧠 Behavioral STAR Analysis</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <section className="p-5 bg-purple-500/10 border border-purple-500/20 rounded-2xl">
+              <h3 className="text-sm font-bold mb-4 text-purple-400 uppercase tracking-wider">🧠 Behavioral STAR Analysis</h3>
+              <div className="flex flex-col gap-8">
                 {analysis.behavioral_star_analysis.map((item: BehavioralStarItem, idx: number) => (
-                  <div key={idx} style={{ paddingBottom: '1.5rem', borderBottom: idx < analysis.behavioral_star_analysis.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '0.75rem' }}>{item.question}</div>
+                  <div key={idx} className={`pb-6 ${idx < analysis.behavioral_star_analysis.length - 1 ? 'border-b border-border' : ''}`}>
+                    <div className="text-base font-bold text-foreground mb-4">{item.question}</div>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
                       {[
                         { label: 'Situation', value: item.scores.situation },
                         { label: 'Task', value: item.scores.task },
                         { label: 'Action', value: item.scores.action },
                         { label: 'Result', value: item.scores.result },
                       ].map((s, sIdx) => (
-                        <div key={sIdx} style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          {s.value ? <CheckCircle2 size={14} color="#86efac" /> : <div style={{ width: 14, height: 14, borderRadius: '50%', border: '1px solid #ef4444' }} />}
+                        <div key={sIdx} className="flex items-center gap-2 text-xs text-foreground-muted">
+                          {s.value ? <CheckCircle2 size={14} className="text-emerald-400" /> : <div className="w-3.5 h-3.5 rounded-full border border-red-400" />}
                           <span>{s.label}</span>
                         </div>
                       ))}
                     </div>
                     
-                    <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginBottom: '0.75rem', lineHeight: '1.4' }}>{item.feedback}</p>
+                    <p className="text-sm text-foreground-muted mb-4 leading-relaxed">{item.feedback}</p>
                     
                     {item.tutor_tip && (
-                      <div style={{ padding: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '0.5rem', borderLeft: '3px solid #3b82f6' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#93c5fd', marginBottom: '0.25rem' }}>Tutor Tip:</div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', lineHeight: '1.4' }}>{item.tutor_tip}</p>
+                      <div className="p-4 bg-blue-500/10 border-l-4 border-blue-500 rounded-r-xl">
+                        <div className="text-xs font-bold text-blue-400 mb-1 uppercase">Tutor Tip:</div>
+                        <p className="text-sm text-foreground-muted leading-relaxed">{item.tutor_tip}</p>
                       </div>
                     )}
                   </div>
@@ -383,29 +293,29 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
 
           {/* Tactical Execution Strategies */}
           {analysis.remediation_plan?.tactical_strategies && analysis.remediation_plan.tactical_strategies.length > 0 && (
-            <section style={{ padding: '1rem', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--radius-sm)' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#93c5fd' }}>🛠️ Tactical Execution Strategies</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginBottom: '1rem' }}>Step-by-step approach for handling similar problems next time:</p>
+            <section className="p-5 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+              <h3 className="text-sm font-bold mb-4 text-blue-400 uppercase tracking-wider">🛠️ Tactical Execution Strategies</h3>
+              <p className="text-sm text-foreground-muted mb-6">Step-by-step approach for handling similar problems next time:</p>
               
               {analysis.remediation_plan.tactical_strategies.map((item: TacticalStrategy, idx: number) => (
-                <div key={idx} style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: idx < analysis.remediation_plan!.tactical_strategies.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#60a5fa', marginBottom: '0.75rem' }}>{item.gap}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div key={idx} className={`mb-8 pb-8 ${idx < analysis.remediation_plan!.tactical_strategies.length - 1 ? 'border-b border-border' : ''}`}>
+                  <div className="text-base font-bold text-blue-400 mb-4">{item.gap}</div>
+                  <div className="space-y-4">
                     <div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>Step 1 — Clarification:</div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginLeft: '0.5rem' }}>{item.strategy.step_1_clarification}</p>
+                      <div className="text-xs font-bold text-foreground-muted mb-1 uppercase">Step 1 — Clarification:</div>
+                      <p className="text-sm text-foreground-muted leading-relaxed">{item.strategy.step_1_clarification}</p>
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>Step 2 — Approach:</div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginLeft: '0.5rem' }}>{item.strategy.step_2_approach}</p>
+                      <div className="text-xs font-bold text-foreground-muted mb-1 uppercase">Step 2 — Approach:</div>
+                      <p className="text-sm text-foreground-muted leading-relaxed">{item.strategy.step_2_approach}</p>
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>Step 3 — Iterate:</div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginLeft: '0.5rem' }}>{item.strategy.step_3_iterate}</p>
+                      <div className="text-xs font-bold text-foreground-muted mb-1 uppercase">Step 3 — Iterate:</div>
+                      <p className="text-sm text-foreground-muted leading-relaxed">{item.strategy.step_3_iterate}</p>
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>Step 4 — Pressure Test:</div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginLeft: '0.5rem' }}>{item.strategy.step_4_pressure_test}</p>
+                      <div className="text-xs font-bold text-foreground-muted mb-1 uppercase">Step 4 — Pressure Test:</div>
+                      <p className="text-sm text-foreground-muted leading-relaxed">{item.strategy.step_4_pressure_test}</p>
                     </div>
                   </div>
                 </div>
@@ -415,17 +325,17 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
 
           {/* Behavioral Adjustment Tools */}
           {analysis.remediation_plan?.behavioral_tactics && analysis.remediation_plan.behavioral_tactics.length > 0 && (
-            <section style={{ padding: '1rem', background: 'rgba(249, 115, 22, 0.08)', border: '1px solid rgba(249, 115, 22, 0.2)', borderRadius: 'var(--radius-sm)' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#fdba74' }}>🧠 Behavioral Adjustment Tools</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginBottom: '1rem' }}>Specific techniques to improve your communication:</p>
+            <section className="p-5 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+              <h3 className="text-sm font-bold mb-4 text-amber-400 uppercase tracking-wider">🧠 Behavioral Adjustment Tools</h3>
+              <p className="text-sm text-foreground-muted mb-6">Specific techniques to improve your communication:</p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="flex flex-col gap-4">
                 {analysis.remediation_plan.behavioral_tactics.map((tactic: BehavioralTactic, idx: number) => (
-                  <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fdba74', marginBottom: '0.5rem' }}>{tactic.tactic_name}</div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', lineHeight: '1.4', marginBottom: '0.5rem' }}>{tactic.description}</p>
+                  <div key={idx} className="p-4 bg-white/5 rounded-xl">
+                    <div className="text-sm font-bold text-amber-400 mb-2">{tactic.tactic_name}</div>
+                    <p className="text-sm text-foreground-muted mb-3 leading-relaxed">{tactic.description}</p>
                     {tactic.example && (
-                      <p style={{ fontSize: '0.7rem', color: 'var(--foreground-muted)', lineHeight: '1.3', fontStyle: 'italic', opacity: 0.8 }}>{tactic.example}</p>
+                      <p className="text-xs text-foreground-muted/60 italic">{tactic.example}</p>
                     )}
                   </div>
                 ))}
@@ -435,16 +345,16 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
 
           {/* Recommended Resources */}
           {analysis.remediation_plan?.resources && analysis.remediation_plan.resources.length > 0 && (
-            <section style={{ padding: '1rem', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: 'var(--radius-sm)' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#86efac' }}>📚 Recommended Topics & Resources</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <section className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+              <h3 className="text-sm font-bold mb-4 text-emerald-400 uppercase tracking-wider">📚 Recommended Topics & Resources</h3>
+              <div className="flex flex-col gap-4">
                 {analysis.remediation_plan.resources.map((resource: Resource, idx: number) => (
-                  <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem', borderLeft: '2px solid #10b981' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#86efac', marginBottom: '0.25rem' }}>
+                  <div key={idx} className="p-4 bg-white/5 rounded-xl border-l-4 border-emerald-500">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-emerald-400 mb-1">
                           {resource.url ? (
-                            <a href={resource.url} target="_blank" rel="noopener noreferrer" style={{ color: '#86efac', textDecoration: 'none' }}>
+                            <a href={resource.url} target="_blank" rel="noopener noreferrer" className="hover:underline decoration-emerald-400 underline-offset-4">
                               {resource.title} ↗
                             </a>
                           ) : (
@@ -452,19 +362,11 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
                           )}
                         </div>
                         {resource.author && (
-                          <div style={{ fontSize: '0.7rem', color: 'var(--foreground-muted)', marginBottom: '0.25rem' }}>by {resource.author}</div>
+                          <div className="text-xs text-foreground-muted mb-2">by {resource.author}</div>
                         )}
-                        <div style={{ fontSize: '0.7rem', color: 'var(--foreground-muted)', opacity: 0.7 }}>
-                          <span style={{ 
-                            padding: '2px 6px', 
-                            background: 'rgba(16, 185, 129, 0.15)', 
-                            borderRadius: '4px',
-                            textTransform: 'uppercase',
-                            fontWeight: 600
-                          }}>
-                            {resource.type}
-                          </span>
-                        </div>
+                        <span className="inline-block px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 rounded uppercase tracking-wider">
+                          {resource.type}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -475,12 +377,12 @@ export const AnalysisDrawer: React.FC<AnalysisDrawerProps> = ({
 
           {/* Communication Improvements */}
           {analysis.recommended_communication_improvements && analysis.recommended_communication_improvements.length > 0 && (
-            <section style={{ padding: '1rem', background: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.2)', borderRadius: 'var(--radius-sm)' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: '#f472b6' }}>💡 Communication Improvements</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <section className="p-5 bg-pink-500/10 border border-pink-500/20 rounded-2xl">
+              <h3 className="text-sm font-bold mb-4 text-pink-400 uppercase tracking-wider">💡 Communication Improvements</h3>
+              <div className="flex flex-col gap-3">
                 {analysis.recommended_communication_improvements.map((improvement: string, idx: number) => (
-                  <div key={idx} style={{ padding: '0.5rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '0.5rem', borderLeft: '2px solid #ec4899' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', lineHeight: '1.4' }}>• {improvement}</div>
+                  <div key={idx} className="p-4 bg-white/5 border-l-4 border-pink-500 rounded-r-xl">
+                    <div className="text-sm text-foreground-muted leading-relaxed">• {improvement}</div>
                   </div>
                 ))}
               </div>

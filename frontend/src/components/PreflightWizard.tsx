@@ -176,119 +176,77 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
   }, [steps]);
 
   return (
-    <div 
-      className="glass-panel" 
-      style={{ 
-        width: '100%',
-        maxWidth: '500px',
-        margin: '1rem',
-        padding: '1.5rem',
-        maxHeight: '90vh',
-        overflowY: 'auto'
-      }}
-    >
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-          Session Setup
-        </h2>
-        <p style={{ color: "var(--foreground-muted)", fontSize: "0.95rem" }}>
+    <div className="glass-effect w-full max-w-[500px] mx-auto p-6 max-h-[90vh] overflow-y-auto space-y-8">
+      <div>
+        <h2 className="text-2xl font-black mb-2">Session Setup</h2>
+        <p className="text-foreground-muted text-base">
           Ensuring everything is ready for your session.
         </p>
         
-        <div style={{ marginTop: '1rem' }}>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', fontWeight: 600 }}>Topic (Optional)</label>
-          <input 
-            type="text" 
-            value={selectedTopic}
-            onChange={(e) => setSelectedTopic(e.target.value)}
-            placeholder="e.g., React, System Design, DSA"
-            style={{ 
-              width: '100%', 
-              padding: '0.75rem', 
-              borderRadius: '8px', 
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid var(--border)',
-              color: 'white'
-            }}
-          />
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+        <div className="mt-6 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-foreground-muted mb-2">Topic (Optional)</label>
+            <input 
+              type="text" 
+              value={selectedTopic}
+              onChange={(e) => setSelectedTopic(e.target.value)}
+              placeholder="e.g., React, System Design, DSA"
+              className="w-full p-3 rounded-xl bg-white/5 border border-border text-white placeholder:text-foreground-muted/50 focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+          <label className="flex items-center gap-3 text-sm font-medium cursor-pointer group">
             <input 
               type="checkbox" 
               checked={isRehearsal}
               onChange={(e) => setIsRehearsal(e.target.checked)}
-              style={{ width: '16px', height: '16px' }}
+              className="w-5 h-5 rounded border-border bg-secondary text-primary focus:ring-primary accent-primary"
             />
-            Rehearsal Mode (Bypass strict pacing)
+            <span className="group-hover:text-foreground transition-colors">Rehearsal Mode (Bypass strict pacing)</span>
           </label>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+      <div className="space-y-4">
         {steps.map((step) => (
           <div
             key={step.id}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.75rem",
-              padding: "1rem",
-              background: "rgba(255,255,255,0.03)",
-              borderRadius: "var(--radius-lg)",
-              border: "1px solid var(--border)",
-            }}
+            className="flex flex-col gap-3 p-4 bg-white/5 rounded-xl border border-border"
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <div style={{ color: step.status === 'ok' ? 'var(--accent)' : step.status === 'error' ? 'var(--danger)' : step.status === 'warn' ? 'var(--warning)' : 'var(--foreground-muted)' }}>
-                  {step.id === 'mic' && <Mic size={20} />}
-                  {step.id === 'db' && <Database size={20} />}
-                  {step.id === 'dropbox' && <Cloud size={20} />}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={
+                  step.status === 'ok' ? 'text-emerald-400' : 
+                  step.status === 'error' ? 'text-red-400' : 
+                  step.status === 'warn' ? 'text-amber-400' : 'text-foreground-muted'
+                }>
+                  {step.id === 'mic' && <Mic size={22} />}
+                  {step.id === 'db' && <Database size={22} />}
+                  {step.id === 'dropbox' && <Cloud size={22} />}
                 </div>
-                <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>{step.label}</span>
+                <span className="font-bold text-base">{step.label}</span>
               </div>
               <div>
                 {step.status === "loading" && (
-                  <Loader2 size={20} className="animate-spin" color="var(--primary)" />
+                  <Loader2 size={22} className="animate-spin text-primary" />
                 )}
                 {step.status === "ok" && (
-                  <CheckCircle2 size={20} color="var(--accent)" />
+                  <CheckCircle2 size={22} className="text-emerald-400" />
                 )}
                 {step.status === "error" && (
-                  <XCircle size={20} color="var(--danger)" />
+                  <XCircle size={22} className="text-red-400" />
                 )}
                 {step.status === "warn" && (
-                  <AlertTriangle size={20} color="var(--warning)" />
+                  <AlertTriangle size={22} className="text-amber-400" />
                 )}
               </div>
             </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: "1rem",
-                flexWrap: 'wrap'
-              }}
-            >
-              <p style={{ fontSize: "0.85rem", color: "var(--foreground-muted)", flex: 1, minWidth: '150px' }}>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <p className="text-sm text-foreground-muted flex-1 min-w-[150px]">
                 {step.detail}
               </p>
               {step.onAction && (
                 <button
-                  className="secondary"
-                  style={{
-                    fontSize: "0.75rem",
-                    padding: "6px 12px",
-                    borderRadius: "8px",
-                    flexShrink: 0,
-                    minHeight: '36px'
-                  }}
+                  className="px-4 py-2 bg-secondary hover:bg-secondary-hover text-foreground text-xs font-bold rounded-lg transition-colors min-h-[36px]"
                   onClick={step.onAction}
                 >
                   {step.actionLabel}
@@ -299,29 +257,16 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
             {step.id === "dropbox" &&
               step.status === "warn" &&
               !dropboxWarningAcked && (
-                <div
-                  style={{
-                    marginTop: "0.5rem",
-                    paddingTop: "0.75rem",
-                    borderTop: "1px solid var(--border)",
-                  }}
-                >
+                <div className="mt-2 pt-3 border-t border-border">
                   <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.6rem",
-                      fontSize: "0.8rem",
-                      cursor: "pointer",
-                      color: "var(--warning)",
-                    }}
+                    className="flex items-center gap-2 text-xs font-medium cursor-pointer text-amber-400"
                   >
                     <input
                       type="checkbox"
                       onChange={(e) =>
                         setDropboxWarningAcked(e.target.checked)
                       }
-                      style={{ accentColor: 'var(--warning)', width: '16px', height: '16px' }}
+                      className="w-4 h-4 accent-amber-400"
                     />
                     I understand recordings won&apos;t be saved to cloud
                     storage
@@ -332,26 +277,25 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: "1rem", marginTop: '1.5rem', flexWrap: 'wrap' }}>
+      <div className="flex gap-4 mt-8">
         <button
-          className="secondary"
-          style={{ flex: 1, minHeight: '44px' }}
+          className="flex-1 py-4 bg-secondary hover:bg-secondary-hover text-foreground rounded-xl font-bold transition-colors"
           onClick={onCancel}
         >
           Cancel
         </button>
         <button
           disabled={!canProceed}
-          style={{ flex: 2, minHeight: '44px' }}
+          className="flex-[2] py-4 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 shadow-lg shadow-primary-glow"
           onClick={() => onComplete(selectedTopic, isRehearsal)}
         >
           {!allDone ? (
             <>
-              <Loader2 size={18} className="animate-spin" /> Checking…
+              <Loader2 size={20} className="animate-spin" /> Checking…
             </>
           ) : (
             <>
-              Begin Interview <ChevronRight size={18} />
+              Begin Interview <ChevronRight size={20} />
             </>
           )}
         </button>

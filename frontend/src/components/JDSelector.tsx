@@ -24,44 +24,30 @@ export const JDSelector: React.FC<JDSelectorProps> = ({ value, onChange }) => {
   };
 
   return (
-    <div style={{ marginBottom: "1.5rem" }}>
-      <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "1rem", color: "var(--foreground)" }}>
+    <div className="mb-6">
+      <label className="block text-sm font-semibold mb-4 text-foreground">
         Job Description
       </label>
 
       {/* Mode Toggle */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+      <div className="flex gap-2 mb-4">
         <button
           onClick={() => setCustomMode(true)}
-          style={{
-            flex: 1,
-            padding: "0.75rem",
-            background: customMode ? "rgba(99, 102, 241, 0.2)" : "rgba(255,255,255,0.05)",
-            border: customMode ? "1px solid #6366f1" : "1px solid var(--border)",
-            borderRadius: "8px",
-            color: customMode ? "#818cf8" : "var(--foreground-muted)",
-            cursor: "pointer",
-            fontSize: "0.85rem",
-            fontWeight: customMode ? 600 : 400,
-            transition: "all 0.2s",
-          }}
+          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all ${
+            customMode 
+              ? "bg-primary/20 border border-primary text-indigo-400" 
+              : "bg-white/5 border border-border text-foreground-muted hover:bg-white/10"
+          }`}
         >
           Custom JD
         </button>
         <button
           onClick={() => setCustomMode(false)}
-          style={{
-            flex: 1,
-            padding: "0.75rem",
-            background: !customMode ? "rgba(99, 102, 241, 0.2)" : "rgba(255,255,255,0.05)",
-            border: !customMode ? "1px solid #6366f1" : "1px solid var(--border)",
-            borderRadius: "8px",
-            color: !customMode ? "#818cf8" : "var(--foreground-muted)",
-            cursor: "pointer",
-            fontSize: "0.85rem",
-            fontWeight: !customMode ? 600 : 400,
-            transition: "all 0.2s",
-          }}
+          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all ${
+            !customMode 
+              ? "bg-primary/20 border border-primary text-indigo-400" 
+              : "bg-white/5 border border-border text-foreground-muted hover:bg-white/10"
+          }`}
         >
           Template
         </button>
@@ -73,70 +59,32 @@ export const JDSelector: React.FC<JDSelectorProps> = ({ value, onChange }) => {
           value={value}
           onChange={(e) => handleCustomChange(e.target.value)}
           placeholder="Paste the Job Description here. Sarah will tailor the interview to these requirements..."
-          style={{
-            width: "100%",
-            height: "200px",
-            background: "var(--secondary)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "1rem",
-            color: "white",
-            fontFamily: "monospace",
-            fontSize: "0.85rem",
-            resize: "vertical",
-          }}
+          className="w-full h-[200px] bg-secondary border border-border rounded-xl p-4 text-white font-mono text-sm resize-y focus:outline-none focus:border-primary transition-colors"
         />
       ) : (
         <div>
           {/* Template Dropdown Button */}
           <button
             onClick={() => setShowTemplates(!showTemplates)}
-            style={{
-              width: "100%",
-              padding: "0.75rem 1rem",
-              background: "var(--secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: "12px",
-              color: "var(--foreground)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              cursor: "pointer",
-              marginBottom: "1rem",
-              fontSize: "0.9rem",
-            }}
+            className="w-full py-3 px-4 bg-secondary border border-border rounded-xl text-foreground flex items-center justify-between cursor-pointer mb-4 text-sm hover:bg-white/5 transition-colors"
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <BookOpen size={16} />
+            <div className="flex items-center gap-2">
+              <BookOpen size={16} className="text-primary" />
               {jdLoading ? "Loading templates..." : `${jdSamples.length} templates available`}
             </div>
             <ChevronDown
               size={18}
-              style={{
-                transform: showTemplates ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "transform 0.2s",
-              }}
+              className={`transition-transform duration-200 ${showTemplates ? "rotate-180" : "rotate-0"}`}
             />
           </button>
 
           {/* Templates Grid */}
           {showTemplates && (
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                gap: "0.75rem",
-                maxHeight: "400px",
-                overflowY: "auto",
-                padding: "0.5rem",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid var(--border)",
-                borderRadius: "12px",
-                marginBottom: "1rem",
-              }}
+              className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto p-2 bg-white/5 border border-border rounded-xl mb-4"
             >
               {jdLoading ? (
-                <div style={{ padding: "2rem", textAlign: "center", color: "var(--foreground-muted)" }}>
+                <div className="p-8 text-center text-foreground-muted">
                   Loading templates...
                 </div>
               ) : jdSamples.length > 0 ? (
@@ -144,37 +92,21 @@ export const JDSelector: React.FC<JDSelectorProps> = ({ value, onChange }) => {
                   <button
                     key={sample.id}
                     onClick={() => handleSelectTemplate(sample.description)}
-                    style={{
-                      padding: "1rem",
-                      background: "rgba(255,255,255,0.02)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(99, 102, 241, 0.1)";
-                      e.currentTarget.style.borderColor = "#818cf8";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "rgba(255,255,255,0.02)";
-                      e.currentTarget.style.borderColor = "var(--border)";
-                    }}
+                    className="p-4 bg-white/5 border border-border rounded-lg text-left transition-all hover:bg-primary/10 hover:border-primary group"
                   >
-                    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#818cf8", marginBottom: "0.25rem" }}>
+                    <div className="text-sm font-semibold text-indigo-400 mb-1 group-hover:text-indigo-300">
                       Day {sample.day_number}: {sample.role}
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--foreground-muted)", marginBottom: "0.5rem" }}>
+                    <div className="text-xs text-foreground-muted mb-2">
                       {sample.metadata.company} • {sample.metadata.experience}
                     </div>
-                    <div style={{ fontSize: "0.7rem", color: "var(--foreground-muted)", lineHeight: "1.4" }}>
+                    <div className="text-[0.7rem] text-foreground-muted/60 leading-relaxed">
                       📍 {sample.metadata.location} | {sample.metadata.industry_preference}
                     </div>
                   </button>
                 ))
               ) : (
-                <div style={{ padding: "1rem", textAlign: "center", color: "var(--foreground-muted)" }}>
+                <div className="p-4 text-center text-foreground-muted">
                   No templates available
                 </div>
               )}
@@ -184,19 +116,10 @@ export const JDSelector: React.FC<JDSelectorProps> = ({ value, onChange }) => {
           {/* Selected Template Preview */}
           {value && !customMode && (
             <div
-              style={{
-                padding: "1rem",
-                background: "rgba(16, 185, 129, 0.1)",
-                border: "1px solid rgba(16, 185, 129, 0.3)",
-                borderRadius: "8px",
-                color: "var(--foreground-muted)",
-                fontSize: "0.8rem",
-                maxHeight: "150px",
-                overflowY: "auto",
-              }}
+              className="p-4 bg-accent/10 border border-accent/30 rounded-lg text-foreground-muted text-xs max-h-[150px] overflow-y-auto"
             >
-              <div style={{ color: "#10b981", fontWeight: 600, marginBottom: "0.5rem" }}>Selected JD Preview:</div>
-              <div style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: "0.75rem", lineHeight: "1.4" }}>
+              <div className="text-accent font-semibold mb-2">Selected JD Preview:</div>
+              <div className="whitespace-pre-wrap font-mono text-[0.75rem] leading-relaxed opacity-80">
                 {value.substring(0, 300)}...
               </div>
             </div>

@@ -23,8 +23,8 @@ export const SkillHeatmap: React.FC<SkillHeatmapProps> = ({ data }) => {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
-        <PolarGrid stroke="var(--border)" />
-        <PolarAngleAxis dataKey="category" tick={{ fill: "var(--foreground-muted)", fontSize: 12 }} />
+        <PolarGrid stroke="#ffffff20" />
+        <PolarAngleAxis dataKey="category" tick={{ fill: "#ffffff", fontSize: 12 }} />
         <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
         <Radar
           name="Skills"
@@ -37,3 +37,5 @@ export const SkillHeatmap: React.FC<SkillHeatmapProps> = ({ data }) => {
     </ResponsiveContainer>
   );
 };
+
+

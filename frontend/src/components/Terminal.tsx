@@ -26,98 +26,61 @@ export const Terminal: React.FC<TerminalProps> = ({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [lines]);
 
-  const colorFor = (type: TerminalLine["type"]) => {
+  const getColorClass = (type: TerminalLine["type"]) => {
     switch (type) {
-      case "stderr":  return "#f87171";
-      case "stdout":  return "#e2e8f0";
-      case "input":   return "#818cf8";
-      case "system":  return "#64748b";
+      case "stderr": return "text-red-400";
+      case "stdout": return "text-slate-200";
+      case "input": return "text-indigo-400";
+      case "system": return "text-slate-500";
     }
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        background: "#0d1117",
-        borderRadius: "0 0 12px 12px",
-        overflow: "hidden",
-      }}
-    >
+    <div className="flex flex-col h-full bg-[#0d1117] rounded-b-xl overflow-hidden">
       {/* Toolbar */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0.5rem 0.75rem",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          flexShrink: 0,
-          background: "#161b22",
-          flexWrap: 'wrap',
-          gap: '0.5rem'
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
-          <span style={{ fontSize: "0.7rem", color: "#64748b", marginLeft: "0.5rem" }}>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 flex-shrink-0 bg-[#161b22] flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+          <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+          <span className="text-[0.7rem] text-slate-500 ml-2">
             Terminal — {language}
           </span>
         </div>
         <button
           onClick={onRun}
           disabled={isRunning}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.4rem",
-            padding: "0.25rem 0.6rem",
-            fontSize: "0.75rem",
-            borderRadius: "6px",
-            background: isRunning ? "#1e293b" : "#10b981",
-            color: "white",
-            border: "none",
-            cursor: isRunning ? "not-allowed" : "pointer",
-            minHeight: '32px'
-          }}
+          className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-colors min-h-[32px] ${
+            isRunning 
+              ? "bg-slate-800 text-white cursor-not-allowed" 
+              : "bg-emerald-500 text-white cursor-pointer hover:bg-emerald-600"
+          }`}
         >
           {isRunning ? (
-            <><Loader2 size={12} className="animate-spin" /> Running…</>
+            <>
+              <Loader2 size={12} className="animate-spin" /> Running…
+            </>
           ) : (
-            <><Play size={12} fill="white" /> Run</>
+            <>
+              <Play size={12} fill="white" /> Run
+            </>
           )}
         </button>
       </div>
 
       {/* Output area */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "0.75rem",
-          fontFamily: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
-          fontSize: "0.75rem",
-          lineHeight: 1.5,
-          minWidth: 0
-        }}
-      >
+      <div className="flex-1 overflow-y-auto px-3 py-3 font-mono text-[0.75rem] leading-relaxed min-w-0">
         {lines.length === 0 && (
-          <span style={{ color: "#64748b" }}>
-            Press <kbd style={{ background: "#1e293b", padding: "1px 5px", borderRadius: 3 }}>Run</kbd> to execute your code.
+          <span className="text-slate-500">
+            Press <kbd className="bg-slate-800 px-1 rounded">Run</kbd> to execute your code.
           </span>
         )}
         {lines.map((line, i) => (
-          <div key={i} style={{ 
-            color: colorFor(line.type), 
-            whiteSpace: "pre-wrap", 
-            wordBreak: "break-all",
-            overflowWrap: 'break-word'
-          }}>
-            {line.type === "input" && <span style={{ color: "#475569" }}>$ </span>}
+          <div 
+            key={i} 
+            className={`${getColorClass(line.type)} whitespace-pre-wrap break-all overflow-wrap-anywhere`}
+          >
+            {line.type === "input" && <span className="text-slate-600">$ </span>}
             {line.text}
           </div>
         ))}

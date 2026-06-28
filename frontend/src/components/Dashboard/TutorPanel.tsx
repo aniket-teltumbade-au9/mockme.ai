@@ -62,169 +62,82 @@ export const TutorPanel: React.FC<TutorPanelProps> = ({ question, userAnswer, on
 
   return (
     <div
-      style={{
-        position: "fixed",
-        top: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 101,
-        width: "100%",
-        maxWidth: "420px",
-        background: "var(--background-alt)",
-        borderLeft: "1px solid var(--border)",
-        display: "flex",
-        flexDirection: "column",
-        animation: "slideInRight 0.3s ease-out",
-        boxShadow: "-10px 0 30px rgba(0,0,0,0.3)",
-      }}
+      className="fixed top-0 right-0 bottom-0 z-[101] w-full max-w-[420px] bg-background-alt border-l border-border flex flex-col animate-slide-in-right shadow-[-10px_0_30px_rgba(0,0,0,0.3)]"
     >
       {/* Header */}
       <div
-        style={{
-          padding: "1.25rem 1.5rem",
-          borderBottom: "1px solid var(--border)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "rgba(15, 23, 42, 0.8)",
-          backdropFilter: "blur(10px)",
-        }}
+        className="p-5 border-b border-border flex justify-between items-center bg-slate-900/80 backdrop-blur-md"
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Sparkles size={18} color="var(--accent)" />
-          <h2 style={{ fontSize: "1rem", fontWeight: 800 }}>AI Tutor</h2>
+        <div className="flex items-center gap-2">
+          <Sparkles size={18} className="text-accent" />
+          <h2 className="text-base font-extrabold">AI Tutor</h2>
         </div>
-        <button onClick={onClose} className="secondary" style={{ padding: "0.4rem" }}>
+        <button onClick={onClose} className="p-1 rounded-md bg-secondary hover:bg-secondary-hover text-foreground-muted hover:text-foreground transition-colors">
           <X size={20} />
         </button>
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem" }}>
-        <div style={{ marginBottom: "1.5rem" }}>
-          <p style={{ fontSize: "0.75rem", color: "var(--foreground-muted)", marginBottom: "0.5rem", fontWeight: 600, textTransform: "uppercase" }}>
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="mb-6">
+          <p className="text-[10px] text-foreground-muted mb-1 font-bold uppercase tracking-widest">
             The Question
           </p>
-          <p style={{ fontSize: "0.9rem", lineHeight: "1.5", color: "var(--foreground)" }}>{question}</p>
+          <p className="text-sm leading-relaxed text-foreground">{question}</p>
         </div>
 
-        <div style={{ marginBottom: "1.5rem" }}>
-          <p style={{ fontSize: "0.75rem", color: "var(--foreground-muted)", marginBottom: "0.5rem", fontWeight: 600, textTransform: "uppercase" }}>
+        <div className="mb-6">
+          <p className="text-[10px] text-foreground-muted mb-1 font-bold uppercase tracking-widest">
             Your Answer
           </p>
-          <p style={{ fontSize: "0.9rem", lineHeight: "1.5", color: "var(--foreground-muted)", fontStyle: "italic" }}>
+          <p className="text-sm leading-relaxed text-foreground-muted italic">
             {"\""}{userAnswer}{"\""}
           </p>
         </div>
 
-        <div style={{ marginBottom: "1.5rem" }}>
-          <p style={{ fontSize: "0.75rem", color: "var(--foreground-muted)", marginBottom: "0.75rem", fontWeight: 600, textTransform: "uppercase" }}>
+        <div className="mb-6">
+          <p className="text-[10px] text-foreground-muted mb-2 font-bold uppercase tracking-widest">
             Learning Mode
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+          <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => handleRefine("gold_standard")}
               disabled={loading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.75rem",
-                borderRadius: "8px",
-                background: mode === "gold_standard" ? "rgba(129, 140, 248, 0.15)" : "rgba(255,255,255,0.03)",
-                border: mode === "gold_standard" ? "1px solid var(--primary)" : "1px solid transparent",
-                color: "var(--foreground)",
-                textAlign: "left",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                fontWeight: 500
-              }}
+              className={`flex items-center gap-2 p-3 rounded-lg text-left cursor-pointer text-xs font-medium transition-all border ${mode === "gold_standard" ? "bg-primary/15 border-primary text-foreground" : "bg-white/5 border-transparent text-foreground-muted hover:bg-white/10"}`}
             >
-              <MessageSquareQuote size={14} color="var(--primary)" />
+              <MessageSquareQuote size={14} className="text-primary" />
               <span>Gold Standard</span>
             </button>
             <button
               onClick={() => handleRefine("comparative")}
               disabled={loading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.75rem",
-                borderRadius: "8px",
-                background: mode === "comparative" ? "rgba(129, 140, 248, 0.15)" : "rgba(255,255,255,0.03)",
-                border: mode === "comparative" ? "1px solid var(--primary)" : "1px solid transparent",
-                color: "var(--foreground)",
-                textAlign: "left",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                fontWeight: 500
-              }}
+              className={`flex items-center gap-2 p-3 rounded-lg text-left cursor-pointer text-xs font-medium transition-all border ${mode === "comparative" ? "bg-primary/15 border-primary text-foreground" : "bg-white/5 border-transparent text-foreground-muted hover:bg-white/10"}`}
             >
-              <Lightbulb size={14} color="var(--accent)" />
+              <Lightbulb size={14} className="text-accent" />
               <span>Comparative</span>
             </button>
             <button
               onClick={() => handleRefine("second_attempt")}
               disabled={loading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.75rem",
-                borderRadius: "8px",
-                background: mode === "second_attempt" ? "rgba(129, 140, 248, 0.15)" : "rgba(255,255,255,0.03)",
-                border: mode === "second_attempt" ? "1px solid var(--primary)" : "1px solid transparent",
-                color: "var(--foreground)",
-                textAlign: "left",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                fontWeight: 500
-              }}
+              className={`flex items-center gap-2 p-3 rounded-lg text-left cursor-pointer text-xs font-medium transition-all border ${mode === "second_attempt" ? "bg-primary/15 border-primary text-foreground" : "bg-white/5 border-transparent text-foreground-muted hover:bg-white/10"}`}
             >
-              <RefreshCw size={14} color="#86efac" />
+              <RefreshCw size={14} className="text-emerald-400" />
               <span>Evaluate 2nd</span>
             </button>
             <button
               onClick={() => handleRefine("study_roadmap")}
               disabled={loading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.75rem",
-                borderRadius: "8px",
-                background: mode === "study_roadmap" ? "rgba(129, 140, 248, 0.15)" : "rgba(255,255,255,0.03)",
-                border: mode === "study_roadmap" ? "1px solid var(--primary)" : "1px solid transparent",
-                color: "var(--foreground)",
-                textAlign: "left",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                fontWeight: 500
-              }}
+              className={`flex items-center gap-2 p-3 rounded-lg text-left cursor-pointer text-xs font-medium transition-all border ${mode === "study_roadmap" ? "bg-primary/15 border-primary text-foreground" : "bg-white/5 border-transparent text-foreground-muted hover:bg-white/10"}`}
             >
-              <BarChart3 size={14} color="#fca5a5" />
+              <BarChart3 size={14} className="text-red-400" />
               <span>Study Guide</span>
             </button>
             <button
               onClick={() => handleRefine("gap_fixer")}
               disabled={loading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.75rem",
-                borderRadius: "8px",
-                background: mode === "gap_fixer" ? "rgba(129, 140, 248, 0.15)" : "rgba(255,255,255,0.03)",
-                border: mode === "gap_fixer" ? "1px solid var(--primary)" : "1px solid transparent",
-                color: "var(--foreground)",
-                textAlign: "left",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                fontWeight: 500
-              }}
+              className={`flex items-center gap-2 p-3 rounded-lg text-left cursor-pointer text-xs font-medium transition-all border ${mode === "gap_fixer" ? "bg-primary/15 border-primary text-foreground" : "bg-white/5 border-transparent text-foreground-muted hover:bg-white/10"}`}
             >
-              <ShieldCheck size={14} color="#86efac" />
+              <ShieldCheck size={14} className="text-emerald-400" />
               <span>Gap Fixer</span>
             </button>
           </div>
@@ -233,33 +146,23 @@ export const TutorPanel: React.FC<TutorPanelProps> = ({ question, userAnswer, on
         {/* Feedback Area */}
         {(loading || feedback || error) && (
           <div
-            style={{
-              marginTop: "1.5rem",
-              padding: "1.25rem",
-              borderRadius: "var(--radius-md)",
-              background: error ? "rgba(239, 68, 68, 0.05)" : "rgba(255, 255, 255, 0.03)",
-              border: error ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid rgba(255, 255, 255, 0.1)",
-            }}
+            className={`mt-6 p-5 rounded-xl border transition-all ${error ? "bg-danger/5 border-danger/20" : "bg-white/5 border-border"}`}
           >
             {loading ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--foreground-muted)" }}>
+              <div className="flex items-center gap-2 text-foreground-muted text-sm">
                 <RefreshCw size={16} className="animate-spin" />
                 Thinking...
               </div>
             ) : error ? (
-              <p style={{ color: "#fca5a5", fontSize: "0.85rem" }}>{error}</p>
+              <p className="text-danger-hover text-sm">{error}</p>
             ) : (
-              <div style={{ fontSize: "0.9rem", lineHeight: "1.6", color: "var(--foreground)" }}>
-                <div style={{ fontWeight: 700, marginBottom: "0.75rem", color: "var(--accent)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div className="text-sm leading-relaxed text-foreground">
+                <div className="font-bold mb-3 text-accent flex items-center gap-2">
                   <Sparkles size={16} />
                   {mode === 'study_roadmap' ? 'Your Study Roadmap' : mode === 'gap_fixer' ? 'Actionable Fixes' : 'Coach Feedback'}
                 </div>
                 <div 
-                  className="tutor-feedback-content"
-                  style={{ 
-                    color: "var(--foreground-muted)",
-                    whiteSpace: "pre-wrap" 
-                  }}
+                  className="tutor-feedback-content text-foreground-muted whitespace-pre-wrap"
                   dangerouslySetInnerHTML={{ __html: feedback?.replace(/<br\s*\/?>/gi, '<br/>') || '' }} 
                 />
               </div>
