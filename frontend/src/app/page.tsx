@@ -63,7 +63,7 @@ export default function LandingPage() {
               </svg>
             </div>
             <p className="text-zinc-300 leading-relaxed italic text-lg relative z-10">
-              "Hey, I'm a fellow developer. I built Mockmeai.com because interview preparation is stressful, and existing tools are locked behind expensive subscriptions. This is a fair sandbox for us to practice tech and behavioral rounds. It uses a habit-building credit loop to keep you consistent—not to gatekeep your growth."
+              {"\""}Hey, I{"'"}m a fellow developer. I built Mockmeai.com because interview preparation is stressful, and existing tools are locked behind expensive subscriptions. This is a fair sandbox for us to practice tech and behavioral rounds. It uses a habit-building credit loop to keep you consistent—not to gatekeep your growth.{"\""}
             </p>
             <p className="mt-4 text-sm text-zinc-500 font-medium">— Creator, Mockmeai.com</p>
           </div>
@@ -142,7 +142,7 @@ export default function LandingPage() {
                 <tr className="hover:bg-zinc-900/30 transition-colors">
                   <td className="px-6 py-4 text-sm text-zinc-300">Inactivity (5+ Days)</td>
                   <td className="px-6 py-4 text-sm font-mono text-red-400">-1 Credit / day</td>
-                  <td className="px-6 py-4 text-sm text-zinc-500">Simulates skills getting "rusty"</td>
+                  <td className="px-6 py-4 text-sm text-zinc-500">Simulates skills getting {"\""}rusty{"\""}</td>
                 </tr>
               </tbody>
             </table>

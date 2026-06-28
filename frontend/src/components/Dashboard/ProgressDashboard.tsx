@@ -215,6 +215,29 @@ export const ProgressDashboard: React.FC = () => {
               <SessionCard key={session.session_id} session={session} index={idx} />
             ))}
           </div>
+          <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "1rem", marginTop: "2rem" }}>
+            Progress Over Time
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <LineChart
+              width={500}
+              height={300}
+              data={progressData.sessions}
+              margin={{
+                top: 5,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="created_at" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="performance_score" stroke="#8884d8" />
+            </LineChart>
+          </div>
         </div>
       )}
 

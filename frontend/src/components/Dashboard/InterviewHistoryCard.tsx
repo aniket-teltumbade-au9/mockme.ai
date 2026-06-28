@@ -240,6 +240,18 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
                       Retry
                   </button>
               )}
+              <button 
+                onClick={() => console.log('View progress over time')}
+                className="secondary"
+                style={{ 
+                  padding: '0.5rem 1rem', 
+                  fontSize: '0.8rem',
+                  borderRadius: 'var(--radius-sm)',
+                  minHeight: '36px'
+                }}
+              >
+                  View Progress
+              </button>
           </div>
         </div>
       </div>
