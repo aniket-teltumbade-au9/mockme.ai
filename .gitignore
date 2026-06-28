@@ -7,7 +7,8 @@ env/
 lib/
 lib64/
 *.md
-
+*.mp3
+.plan/
 # Environment variables
 .env
 .env.local
@@ -39,3 +40,4 @@ yarn-error.log*
 # IDEs
 .vscode/
 .idea/
+.aider*

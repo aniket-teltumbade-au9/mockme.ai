@@ -46,32 +46,32 @@ function DropboxCallbackContent() {
 
     completeAuth();
   }, [searchParams, router, setDropboxAuth]);
-// ...
+
   return (
-    <div className="container layout-conversational">
-      <div className="glass-panel text-center" style={{ maxWidth: '400px' }}>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="glass-panel text-center max-w-[400px] w-full">
         {status === 'loading' && (
           <>
-            <Loader2 className="animate-spin" size={48} style={{ margin: '0 auto 1.5rem', color: 'var(--primary)' }} />
-            <h2>Connecting Dropbox...</h2>
-            <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>Finalizing secure handshake.</p>
+            <Loader2 className="animate-spin mx-auto mb-6 text-primary" size={48} />
+            <h2 className="text-2xl font-bold mb-2">Connecting Dropbox...</h2>
+            <p className="text-slate-400 text-sm mt-2">Finalizing secure handshake.</p>
           </>
         )}
 
         {status === 'success' && (
           <>
-            <CheckCircle2 size={48} style={{ margin: '0 auto 1.5rem', color: 'var(--accent)' }} />
-            <h2>Success!</h2>
-            <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>Your account is connected. Redirecting...</p>
+            <CheckCircle2 className="mx-auto mb-6 text-emerald-400" size={48} />
+            <h2 className="text-2xl font-bold mb-2">Success!</h2>
+            <p className="text-slate-400 text-sm mt-2">Your account is connected. Redirecting...</p>
           </>
         )}
 
         {status === 'error' && (
           <>
-            <XCircle size={48} style={{ margin: '0 auto 1.5rem', color: 'var(--danger)' }} />
-            <h2>Connection Failed</h2>
-            <p style={{ color: '#ef4444', marginTop: '0.5rem' }}>{errorMsg}</p>
-            <button onClick={() => router.push('/')} className="secondary" style={{ marginTop: '1.5rem' }}>
+            <XCircle className="mx-auto mb-6 text-red-400" size={48} />
+            <h2 className="text-2xl font-bold mb-2">Connection Failed</h2>
+            <p className="text-red-400 text-sm mt-2">{errorMsg}</p>
+            <button onClick={() => router.push('/')} className="secondary mt-6">
               Back to Dashboard
             </button>
           </>

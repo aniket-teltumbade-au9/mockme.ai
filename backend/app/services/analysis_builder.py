@@ -20,6 +20,20 @@ The output MUST be a strict JSON object following this schema exactly:
     "gaps": ["string"],
     "summary": "string"
   },
+  "behavioral_star_analysis": [
+    {
+      "question": "string",
+      "answer": "string",
+      "scores": {
+        "situation": boolean,
+        "task": boolean,
+        "action": boolean,
+        "result": boolean
+      },
+      "feedback": "string",
+      "tutor_tip": "string"
+    }
+  ],
   "states": {
     "introduction": {
       "duration_seconds": number,
@@ -66,6 +80,15 @@ The output MUST be a strict JSON object following this schema exactly:
     "elite_response": "string (staff-level, production-grade response to the same question/scenario, 200-300 words)",
     "why_better": "string (explain the 2-3 key differences that make the elite response stronger)"
   }
+}
+
+Behavioral Analysis (STAR Framework):
+- For every behavioral/experience question, evaluate if the candidate provided:
+  - Situation: Set the scene.
+  - Task: Describe the challenge/goal.
+  - Action: Explain exactly WHAT they did (the most important part).
+  - Result: Provide a quantifiable or clear outcome.
+- provide a "tutor_tip" that specifically tells them how to make the answer a 10/10 (e.g., "Add a metric to the Result section").
 
 Scoring rubric for communication sub-scores (0-10):
 - 0-3: Poor — unclear, unstructured, or off-topic

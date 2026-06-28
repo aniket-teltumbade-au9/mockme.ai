@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import axios from "axios";
 import { Terminal, TerminalLine } from "./Terminal";
@@ -23,7 +23,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const [isRunning, setIsRunning] = useState(false);
 
   // Track current code in a ref so the Run button always has the latest value
-  const codeRef = React.useRef(code);
+  const codeRef = useRef(code);
   const handleChange = (value: string | undefined) => {
     codeRef.current = value ?? "";
     onChange(value);
@@ -72,9 +72,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   }, [language, isRunning]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+    <div className="flex flex-col h-full min-h-0">
       {/* Editor — takes 60% of available height */}
-      <div style={{ flex: "0 0 60%", minHeight: 0, overflow: "hidden" }}>
+      <div className="flex-[0_0_60%] min-h-0 overflow-hidden">
         <Editor
           height="100%"
           language={language}
@@ -93,17 +93,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       </div>
 
       {/* Divider */}
-      <div
-        style={{
-          height: "4px",
-          background: "rgba(255,255,255,0.05)",
-          flexShrink: 0,
-          cursor: "ns-resize",
-        }}
-      />
+      <div className="h-1 bg-white/5 flex-shrink-0 cursor-ns-resize" />
 
       {/* Terminal — takes remaining 40% */}
-      <div style={{ flex: "0 0 40%", minHeight: 0, overflow: "hidden" }}>
+      <div className="flex-[0_0_40%] min-h-0 overflow-hidden">
         <Terminal
           lines={terminalLines}
           isRunning={isRunning}
