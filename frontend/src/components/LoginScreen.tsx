@@ -20,6 +20,19 @@ export const LoginScreen = () => {
     }
   };
 
+  const loginWithGoogle = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE}/google/auth-url`);
+      localStorage.setItem("google_code_verifier", res.data.code_verifier);
+      window.location.href = res.data.auth_url;
+    } catch (err) {
+      console.error("Login failed", err);
+      setIsLoading(false);
+      alert("Failed to initiate login. Please check your connection.");
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4">
       <div 
@@ -40,24 +53,41 @@ export const LoginScreen = () => {
 
         <div className="w-full h-[1px] bg-border my-2" />
 
-        <button 
-          onClick={loginWithDropbox} 
-          disabled={isLoading} 
-          className="w-full h-[56px] text-[1rem] rounded-lg shadow-[0_10px_20px_-5px_var(--color-primary-glow)] flex items-center justify-center transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-        >
-          {isLoading ? (
-            <Loader2 className="animate-spin" size={20} />
-          ) : (
-            <>
-              <LogIn size={20} />
-              <span className="ml-2">Continue with Dropbox</span>
-            </>
-          )}
-        </button>
+        <div className="w-full flex flex-col gap-3">
+          <button 
+            onClick={loginWithDropbox} 
+            disabled={isLoading} 
+            className="w-full h-[56px] text-[1rem] rounded-lg shadow-[0_10px_20px_-5px_var(--color-primary-glow)] flex items-center justify-center transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none bg-white/5 hover:bg-white/10 border border-white/10 text-white"
+          >
+            {isLoading ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <>
+                <LogIn size={20} />
+                <span className="ml-2">Continue with Dropbox</span>
+              </>
+            )}
+          </button>
+
+          <button 
+            onClick={loginWithGoogle} 
+            disabled={isLoading} 
+            className="w-full h-[56px] text-[1rem] rounded-lg shadow-[0_10px_20px_-5px_var(--color-primary-glow)] flex items-center justify-center transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none bg-white/5 hover:bg-white/10 border border-white/10 text-white"
+          >
+            {isLoading ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <>
+                <LogIn size={20} />
+                <span className="ml-2">Continue with Google</span>
+              </>
+            )}
+          </button>
+        </div>
         
         <div className="flex items-center gap-2 text-foreground-muted text-[0.8rem]">
             <ShieldCheck size={14} className="text-accent" />
-            <span>Secure authentication via Dropbox OAuth</span>
+            <span>Secure authentication via Dropbox & Google OAuth</span>
         </div>
       </div>
     </div>

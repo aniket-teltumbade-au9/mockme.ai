@@ -104,6 +104,12 @@ async def finalize_interview_task(session_id: str, mic_path_override: str | None
             analysis_payload["remediation_plan"] = session["remediation_plan"]
             print(f"DEBUG: Added remediation_plan to analysis")
         
+        # --- Award Credits for Completion ---
+        from app.services.credit_service import CreditService
+        hire_verdict = analysis_payload.get("hire_verdict")
+        await CreditService.handle_interview_complete(session.get("user_id"), session_id, hire_verdict)
+        print(f"DEBUG: Awarded completion credits. Verdict: {hire_verdict}")
+        
         print(f"DEBUG: Analysis built successfully")
     except Exception as e:
         print(f"ANALYSIS ERROR: {e}")
@@ -147,7 +153,35 @@ async def finalize_interview_task(session_id: str, mic_path_override: str | None
                 "finalization_attempted_at": datetime.now(timezone.utc),
                 "analysis": analysis_payload
             })
+
+    # Upload to Google Drive if connected
+    if user.get("google_refresh_token"):
+        print(f"DEBUG: Google Drive connected - uploading...")
+        try:
+            from app.services.google_drive_service import GoogleDriveService
+            service = GoogleDriveService(user["google_refresh_token"])
+            upload_audio_path = mixed_path if (mixed_path and os.path.exists(mixed_path)) else mic_path
+            if upload_audio_path and os.path.exists(upload_audio_path):
+                with open(upload_audio_path, "rb") as f:
+                    audio_bytes = f.read()
+                
+                google_audio_url, google_json_url = service.upload_interview(
+                    session_id, date_str, audio_bytes, analysis_payload
+                )
+                
+                await update_session(session_id, {
+                    "google_audio_url": google_audio_url,
+                    "google_analysis_url": google_json_url,
+                })
+                print(f"DEBUG: Google Drive upload complete.")
+            else:
+                print(f"WARN: No audio available for Google Drive upload")
+        except Exception as e:
+            print(f"GOOGLE DRIVE UPLOAD ERROR: {e}")
     else:
+        print(f"DEBUG: Google Drive not connected")
+
+    if not user.get("dropbox_refresh_token") and not user.get("google_refresh_token"):
         print(f"DEBUG: Dropbox not connected - saving analysis only")
         await update_session(session_id, {
             "finalized": True,

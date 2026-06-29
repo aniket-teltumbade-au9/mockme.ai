@@ -1,11 +1,11 @@
-"use client";
+"use client"
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 import { API_BASE } from "@/utils/apiConfig";
 
-export default function DropboxCallbackPage() {
+export default function GoogleCallbackPage() {
   const { setAuth } = useAuth();
   const router = useRouter();
 
@@ -14,7 +14,7 @@ export default function DropboxCallbackPage() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       const state = params.get("state");
-      const codeVerifier = localStorage.getItem("dropbox_code_verifier");
+      const codeVerifier = localStorage.getItem("google_code_verifier");
 
       if (!code || !state || !codeVerifier) {
         console.error("Missing code, state, or code_verifier in callback");
@@ -23,11 +23,11 @@ export default function DropboxCallbackPage() {
       }
 
       try {
-        const res = await axios.get(`${API_BASE}/dropbox/callback`, { 
+        const res = await axios.get(`${API_BASE}/google/callback`, { 
           params: { code, state, code_verifier: codeVerifier }
         });
         
-        // Update frontend auth state with the user ID and token returned from backend
+        // Update frontend auth state with the user ID returned from backend
         if (res.data.access_token) {
           setAuth(res.data.user_id, res.data.access_token);
         } else {
@@ -36,10 +36,10 @@ export default function DropboxCallbackPage() {
           return;
         }
         
-        localStorage.removeItem("dropbox_code_verifier");
+        localStorage.removeItem("google_code_verifier");
         router.push("/app");
       } catch (err) {
-        console.error("Dropbox Auth Callback Error", err);
+        console.error("Google Auth Callback Error", err);
         router.push("/");
       }
     };
@@ -53,7 +53,7 @@ export default function DropboxCallbackPage() {
         <div className="animate-spin mb-4 flex justify-center">
           <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
         </div>
-        <p className="text-lg font-medium">Finalizing Dropbox connection...</p>
+        <p className="text-lg font-medium">Finalizing Google Drive connection...</p>
       </div>
     </div>
   );

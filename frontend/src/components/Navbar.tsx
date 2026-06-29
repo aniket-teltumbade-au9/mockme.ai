@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { LogOut, User, LayoutDashboard, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { CreditStatus } from "./CreditStatus";
 
 export const Navbar: React.FC = () => {
   const { userId, logout } = useAuth();
@@ -22,6 +23,8 @@ export const Navbar: React.FC = () => {
 
         {/* Navigation Links */}
         <div className="flex items-center gap-4 md:gap-8">
+          <CreditStatus />
+          <div className="h-6 w-[1px] bg-white/10 mx-2 hidden sm:block" />
           <Link 
             href="/" 
             className="text-sm font-medium text-foreground-muted hover:text-white transition-colors flex items-center gap-1.5"

@@ -4,24 +4,51 @@ import { useRouter } from "next/navigation";
 import { User, LogOut, ShieldCheck, TrendingUp, Award, Activity } from "lucide-react";
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { API_BASE, authHeaders } from "@/utils/apiConfig";
+import { API_BASE, getDropboxAccessToken } from "@/utils/apiConfig";
+
+interface ConnectionStatus {
+  dropbox: { connected: boolean; email?: string; name?: string };
+  google: { connected: boolean; email?: string; name?: string };
+}
 
 export default function ProfilePage() {
-  const { userId, logout } = useAuth();
+  const { userId, isInitialized, logout } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [progressData, setProgressData] = useState<any>(null);
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
+  const [connections, setConnections] = useState<ConnectionStatus>({
+    dropbox: { connected: false },
+    google: { connected: false }
+  });
 
   useEffect(() => {
+    if (!isInitialized) return;
+    
     const fetchProfileData = async () => {
       try {
-        const [res, heatmapRes] = await Promise.all([
-          axios.get(`${API_BASE}/user/progress/detailed`, { headers: authHeaders() }),
-          axios.get(`${API_BASE}/user/progress/heatmap`, { headers: authHeaders() })
+        const token = getDropboxAccessToken();
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+        
+        const headers = { Authorization: `Bearer ${token}` };
+        
+        // Fetch progress and connection data in parallel
+        const [progressRes, heatmapRes, dropboxStatusRes, googleStatusRes] = await Promise.all([
+          axios.get(`${API_BASE}/user/progress/detailed`, { headers }),
+          axios.get(`${API_BASE}/user/progress/heatmap`, { headers }),
+          axios.get(`${API_BASE}/dropbox/status`, { headers }).catch(() => ({ data: { connected: false } })),
+          axios.get(`${API_BASE}/google/status`, { headers }).catch(() => ({ data: { connected: false } }))
         ]);
-        setProgressData(res.data);
+        
+        setProgressData(progressRes.data);
         setHeatmapData(heatmapRes.data.data);
+        setConnections({
+          dropbox: dropboxStatusRes.data,
+          google: googleStatusRes.data
+        });
       } catch (err) {
         console.error("Failed to fetch profile data", err);
       } finally {
@@ -29,7 +56,7 @@ export default function ProfilePage() {
       }
     };
     fetchProfileData();
-  }, [userId]);
+  }, [userId, isInitialized]);
 
   if (loading) {
     return (
@@ -56,15 +83,62 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Account Status */}
+          {/* Cloud Storage Status */}
           <div className="bg-white/5 rounded-xl p-5 text-left border border-border transition-all hover:border-border-bright">
             <div className="flex items-center gap-3 mb-3">
               <ShieldCheck size={20} className="text-accent" />
-              <span className="font-bold text-sm">Account Status</span>
+              <span className="font-bold text-sm">Cloud Storage</span>
             </div>
-            <p className="text-xs text-emerald-400 font-semibold mb-1">Verified</p>
-            <p className="text-[10px] text-foreground-muted leading-relaxed">
-              Linked with Dropbox for automated recording and AI analysis.
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-foreground-muted">Dropbox</span>
+                <div className="flex items-center gap-2">
+                  {connections.dropbox.connected ? (
+                    <>
+                      <span className="text-[10px] text-emerald-400 font-semibold">Connected</span>
+                      <button 
+                        onClick={() => window.location.href = `${API_BASE}/dropbox/disconnect`}
+                        className="text-[10px] text-red-400 hover:underline"
+                      >
+                        Disconnect
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={() => window.location.href = `${API_BASE}/dropbox/auth-url`}
+                      className="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white transition-colors"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-foreground-muted">Google Drive</span>
+                <div className="flex items-center gap-2">
+                  {connections.google.connected ? (
+                    <>
+                      <span className="text-[10px] text-emerald-400 font-semibold">Connected</span>
+                      <button 
+                        onClick={() => window.location.href = `${API_BASE}/google/disconnect`}
+                        className="text-[10px] text-red-400 hover:underline"
+                      >
+                        Disconnect
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={() => window.location.href = `${API_BASE}/google/auth-url`}
+                      className="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white transition-colors"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-foreground-muted mt-3 leading-relaxed">
+              Link your cloud accounts to automatically vault your recordings.
             </p>
           </div>
 

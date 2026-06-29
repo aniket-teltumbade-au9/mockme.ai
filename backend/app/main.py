@@ -29,15 +29,19 @@ from app.services.stt import transcribe_audio
 from app.services.tts import get_audio_bytes
 from app.utils.parser import parse_llm_response
 from app.services.auth import get_current_user
-from app.services.database import db, get_user_interviews, get_user_progress, can_start_interview, save_interview_session, update_progress, update_session, test_db_connection
+from app.services.database import db, get_user_interviews, get_user_progress, can_start_interview, save_interview_session, update_progress, update_session, test_db_connection, get_user_resume, set_user_resume
+from app.services.credit_service import CreditService
 from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_path, get_turn_audio_path, concatenate_turn_audio
+
 from app.services.voice_service import get_or_refresh_voices
 from app.services.dropbox_service import DropboxService
 
-from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin, tutor
+from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin, tutor, credits, google_auth
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+
     # Load shared resources (e.g., database connection pools, ML models)
     await test_db_connection()
     print("Application is starting up...")
@@ -63,6 +67,8 @@ app.include_router(progress.router)
 app.include_router(focused_sessions.router)
 app.include_router(admin.router)
 app.include_router(tutor.router)
+app.include_router(credits.router)
+app.include_router(google_auth.router)
 
 # In-memory session store
 sessions = {}
@@ -166,6 +172,14 @@ async def start_session(
     current_user: dict = Depends(get_current_user),
 ):
     user_id = current_user["user_id"]
+    
+    # --- Credit Check & Deduction ---
+    if not await CreditService.handle_interview_start(user_id, str(uuid.uuid4())): # Temporary session_id for ledger
+        return {
+            "error": "Insufficient Credits",
+            "message": "You need at least 2 credits to start an interview. Log in daily or complete quick drills to earn more!"
+        }
+
     if not await can_start_interview(user_id):
         return {
             "error": "Daily limit reached",
@@ -183,7 +197,7 @@ async def start_session(
     resume_filename = None
 
     if resume:
-        # New resume uploaded: save to Dropbox and then to User Profile
+        # New resume uploaded: save to Cloud Storage and then to User Profile
         if current_user.get("dropbox_refresh_token"):
             try:
                 service = DropboxService(current_user["dropbox_refresh_token"])
@@ -192,11 +206,23 @@ async def start_session(
                 resume_filename = resume.filename
                 # Persist to User Profile
                 await set_user_resume(user_id, resume_url, resume_filename)
-                print(f"DEBUG: New resume uploaded and persisted to profile: {resume_url}")
+                print(f"DEBUG: New resume uploaded to Dropbox: {resume_url}")
             except Exception as e:
                 print(f"ERROR uploading resume to Dropbox: {e}")
+        elif current_user.get("google_refresh_token"):
+            try:
+                from app.services.google_drive_service import GoogleDriveService
+                service = GoogleDriveService(current_user["google_refresh_token"])
+                resume_bytes = await resume.read()
+                resume_url = service.upload_resume(session_id, resume.filename, resume_bytes)
+                resume_filename = resume.filename
+                # Persist to User Profile
+                await set_user_resume(user_id, resume_url, resume_filename)
+                print(f"DEBUG: New resume uploaded to Google Drive: {resume_url}")
+            except Exception as e:
+                print(f"ERROR uploading resume to Google Drive: {e}")
         else:
-            print("WARN: Resume provided but no Dropbox token")
+            print("WARN: Resume provided but no Cloud Storage token")
     else:
         # No new resume: check User Profile for a stored one
         stored_resume = await get_user_resume(user_id)

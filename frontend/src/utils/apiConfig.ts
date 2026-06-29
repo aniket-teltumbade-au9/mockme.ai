@@ -2,9 +2,9 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:800
 
 export const getDropboxAccessToken = () => {
   if (typeof window === "undefined") return null;
-  const token = localStorage.getItem("dropbox_access_token");
+  const token = localStorage.getItem("access_token");
   if (!token) {
-    console.warn("⚠️ No Dropbox access token found in localStorage");
+    console.warn("⚠️ No access token found in localStorage");
   }
   return token;
 };

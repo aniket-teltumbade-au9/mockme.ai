@@ -36,6 +36,8 @@ class Session(BaseModel):
     finalized: bool = False
     dropbox_audio_url: Optional[str] = None
     dropbox_analysis_url: Optional[str] = None
+    google_audio_url: Optional[str] = None
+    google_analysis_url: Optional[str] = None
     recording_available: bool = False
     finalization_attempted_at: Optional[datetime] = None
     finalization_error: Optional[str] = None
@@ -53,3 +55,8 @@ class User(BaseModel):
     dropbox_subject: Optional[str] = None
     dropbox_display_name: Optional[str] = None
     dropbox_email_verified: Optional[bool] = None
+    google_access_token: Optional[str] = None
+    google_refresh_token: Optional[str] = None
+    google_token_expiry: Optional[datetime] = None
+    google_account_email: Optional[str] = None
+    google_display_name: Optional[str] = None

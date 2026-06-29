@@ -57,6 +57,13 @@ async def update_user_dropbox(user_id: str, dropbox_data: dict):
         upsert=True,
     )
 
+async def update_user_google(user_id: str, google_data: dict):
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": google_data, "$setOnInsert": {"user_id": user_id}},
+        upsert=True,
+    )
+
 async def get_user_resume(user_id: str):
     user = await db.users.find_one({"user_id": user_id}, {"resume_url": 1, "resume_filename": 1})
     if user:

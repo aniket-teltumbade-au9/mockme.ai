@@ -6,7 +6,7 @@ interface AuthContextType {
   userId: string | null;
   accessToken: string | null;
   setUserId: (id: string | null) => void;
-  setDropboxAuth: (id: string, accessToken: string) => void;
+  setAuth: (id: string, token: string) => void;
   logout: () => void;
   isInitialized: boolean;
   sessionExpired: boolean;
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const storedId = localStorage.getItem("auth_user_id");
-    const storedToken = localStorage.getItem("dropbox_access_token");
+    const storedToken = localStorage.getItem("access_token");
     if (storedId) {
       setTimeout(() => setUserIdState(storedId), 0);
     }
@@ -37,23 +37,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (id) localStorage.setItem("auth_user_id", id);
     else {
       localStorage.removeItem("auth_user_id");
-      localStorage.removeItem("dropbox_access_token");
+      localStorage.removeItem("access_token");
       setAccessTokenState(null);
     }
     setUserIdState(id);
     setSessionExpired(false);
   }, []);
 
-  const setDropboxAuth = useCallback((id: string, token: string) => {
+  const setAuth = useCallback((id: string, token: string) => {
     localStorage.setItem("auth_user_id", id);
-    localStorage.setItem("dropbox_access_token", token);
+    localStorage.setItem("access_token", token);
     setUserIdState(id);
     setAccessTokenState(token);
     setSessionExpired(false);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem("dropbox_access_token");
+    localStorage.removeItem("access_token");
     localStorage.removeItem("auth_user_id");
     setAccessTokenState(null);
     setUserIdState(null);
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ userId, accessToken, setUserId, setDropboxAuth, logout, isInitialized, sessionExpired, setSessionExpired }}>
+    <AuthContext.Provider value={{ userId, accessToken, setUserId, setAuth, logout, isInitialized, sessionExpired, setSessionExpired }}>
       <AxiosInterceptor setSessionExpired={setSessionExpired}>
         {children}
       </AxiosInterceptor>
@@ -102,15 +102,16 @@ function AxiosInterceptor({ children, setSessionExpired }: { children: ReactNode
           originalRequest._retry = true;
 
           try {
-            // Try to refresh the token
+            // Try to refresh the token. 
+            // NOTE: This currently defaults to Dropbox. A more robust system would track the provider.
             const refreshRes = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/dropbox/refresh-token`, {}, {
               headers: {
-                Authorization: `Bearer ${localStorage.getItem('dropbox_access_token')}`
+                Authorization: `Bearer ${localStorage.getItem('access_token')}`
               }
             });
 
             const newToken = refreshRes.data.access_token;
-            localStorage.setItem('dropbox_access_token', newToken);
+            localStorage.setItem('access_token', newToken);
 
             // Update the failed request with new token
             originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
@@ -124,7 +125,7 @@ function AxiosInterceptor({ children, setSessionExpired }: { children: ReactNode
             isRefreshing = false;
             processQueue(null);
             setSessionExpired(true);
-            localStorage.removeItem('dropbox_access_token');
+            localStorage.removeItem('access_token');
             localStorage.removeItem('auth_user_id');
             return Promise.reject(refreshError);
           }
