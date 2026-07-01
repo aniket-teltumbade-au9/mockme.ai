@@ -805,7 +805,7 @@ export default function InterviewPage() {
   const isSplit = uiConfig?.showCodeWorkspace;
 
   return (
-    <div className="container">
+    <div className="flex flex-col h-screen bg-slate-950">
       {errorMsg && (
         <div className="fixed top-4 right-4 z-[9999] bg-red-600 text-white px-6 py-3 rounded-lg shadow-xl">
           {errorMsg}
@@ -819,267 +819,134 @@ export default function InterviewPage() {
           </div>
         </div>
       )}
-      <header className="header">
-        <div className="flex items-center gap-0.5 font-bold tracking-tight">
-          <span className="text-slate-100 text-lg">mockme</span>
-          <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs">.ai</span>
-        </div>
-        <div className="progress-container">
-          <div className="progress-bar-outer">
-            <div
-              className="progress-bar-inner"
-              style={{ width: `${uiConfig?.progress || 0}%` }}
-            />
+
+      {/* Sticky Header with Progress */}
+      <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur border-b border-slate-800 px-6 py-4">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-0.5 font-bold tracking-tight">
+            <span className="text-slate-100 text-lg">mockme</span>
+            <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs">.ai</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <VoiceSelector voices={voiceList} selectedVoice={selectedVoice} onSelect={setSelectedVoice} />
+            <div className="state-badge" style={{ background: "var(--secondary)", padding: "4px 12px", borderRadius: "12px", fontSize: "0.7rem" }}>
+              {uiConfig?.currentState}
+            </div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <VoiceSelector voices={voiceList} selectedVoice={selectedVoice} onSelect={setSelectedVoice} />
-          <div
-            className="state-badge"
-            style={{
-              background: "var(--secondary)",
-              padding: "4px 12px",
-              borderRadius: "12px",
-              fontSize: "0.7rem",
-            }}
-          >
-            {uiConfig?.currentState}
-          </div>
+        {/* Progress Bar */}
+        <div className="w-full bg-slate-800/50 rounded-full h-1.5">
+          <div className="bg-gradient-to-r from-indigo-500 to-violet-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${uiConfig?.progress || 0}%` }} />
         </div>
       </header>
 
-      <main className="main-content">
-        <div
-          className={isSplit ? "layout-split" : "layout-conversational"}
-          style={isSplit ? { flex: 1, minHeight: 0 } : undefined}
-        >
-          {/* Left / conversational panel */}
-          <div
-            className={isSplit ? "left-panel glass-panel" : "glass-panel"}
-            style={{
-              ...(!isSplit ? { width: "100%", maxWidth: "800px" } : {}),
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "4rem 2rem",
-              transition: "var(--transition-smooth)",
-            }}
-          >
-            <div className="interviewer-container">
-              <div className={`avatar-pulse ${isSpeaking ? "speaking" : ""}`} />
-              <div
-                className="avatar-core"
-                style={{
-                  boxShadow: isSpeaking
-                    ? "0 0 60px var(--primary-glow)"
-                    : "0 0 40px rgba(0,0,0,0.3)",
-                }}
-              >
-                <User size={54} />
-              </div>
-            </div>
-
-            <div style={{ textAlign: "center", margin: "1.5rem 0" }}>
-              <h2 style={{ fontSize: "1.5rem", marginBottom: "0.25rem", color: "var(--foreground)" }}>
-                Sarah
-              </h2>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <span
-                  style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: isSpeaking ? "var(--primary)" : "var(--accent)",
-                  }}
-                />
-                <p
-                  style={{
-                    color: "var(--foreground-muted)",
-                    fontSize: "0.9rem",
-                    fontWeight: 500,
-                  }}
-                >
-                  {isSpeaking ? "Speaking..." : "Listening..."}
-                </p>
-              </div>
-            </div>
-
-            <div className="controls">
-              {uiConfig?.currentState === "STATE_3" ? (
-                <div style={{ textAlign: "center", animation: "fadeIn 0.5s ease-out" }}>
-                  {isFinalizing ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "1rem",
-                      }}
-                    >
-                      <Loader2 className="animate-spin" size={48} color="var(--primary)" />
-                      <p style={{ fontWeight: 600, color: "var(--foreground-muted)" }}>
-                        Finalizing Analysis...
-                      </p>
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "1.5rem",
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: "var(--accent-glow)",
-                          padding: "1rem",
-                          borderRadius: "50%",
-                        }}
-                      >
-                        <CheckCircle2 size={48} color="var(--accent)" />
-                      </div>
-                      <h3 style={{ fontSize: "1.25rem" }}>Interview Complete</h3>
-                      <button
-                        onClick={() => window.location.reload()}
-                        style={{ minWidth: "200px" }}
-                      >
-                        Return to Dashboard
-                      </button>
-                    </div>
-                  )}
+      {/* Main Content - Split Layout */}
+      <main className="flex-1 flex flex-row overflow-hidden">
+        {/* Left Panel - Conversational (always visible, 50% width in split mode) */}
+        <div className={`${isSplit ? 'w-1/2' : 'w-full'} flex flex-col bg-slate-950 border-r border-slate-800 overflow-y-auto`}>
+          <div className="flex-1 flex flex-col items-center justify-center px-8 py-12">
+            {/* Avatar Section */}
+            <div className="mb-8">
+              <div className="relative w-32 h-32 mx-auto">
+                <div className={`absolute inset-0 rounded-full border-2 border-indigo-500/30 animate-pulse ${isSpeaking ? 'ring-4 ring-indigo-500/50' : ''}`} />
+                <div className="absolute inset-2 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center">
+                  <User size={64} className="text-white" />
                 </div>
-              ) : isRecording ? (
-                <button
-                  onClick={stopRecording}
-                  className="mic-btn listening"
-                  title="Stop Recording"
-                >
-                  <MicOff size={32} />
-                </button>
-              ) : (
-                <button
-                  disabled={isSpeaking || isLoading}
-                  onClick={startRecording}
-                  className="mic-btn"
-                  title="Start Recording"
-                >
-                  {isLoading ? <Loader2 className="animate-spin" /> : <Mic size={32} />}
-                </button>
-              )}
+              </div>
             </div>
 
-            {/* Live transcript of last Sarah utterance */}
-            <div style={{ width: "100%", maxWidth: "600px", marginTop: "2rem" }}>
+            {/* Name and Status */}
+            <h2 className="text-3xl font-bold text-slate-100 mb-2">Sarah</h2>
+            <div className="flex items-center gap-2 mb-8">
+              <span className={`w-3 h-3 rounded-full ${isSpeaking ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
+              <p className="text-slate-400 text-sm font-medium">{isSpeaking ? 'Speaking...' : 'Ready to listen'}</p>
+            </div>
+
+            {/* Last Sarah Text */}
+            {lastSarahText && (
+              <div className="w-full max-w-xs mb-8 p-4 rounded-lg bg-indigo-500/10 border border-indigo-500/30">
+                <p className="text-slate-200 text-sm leading-relaxed italic">{lastSarahText}</p>
+              </div>
+            )}
+
+            {/* Mic Button or Completion State */}
+            {uiConfig?.currentState === "STATE_3" ? (
+              <div className="w-full max-w-xs text-center">
+                {isFinalizing ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="animate-spin text-indigo-500" size={48} />
+                    <p className="text-slate-400 font-medium">Finalizing Analysis...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-6">
+                    <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                      <CheckCircle2 size={40} className="text-emerald-500" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-100">Interview Complete</h3>
+                    <p className="text-slate-400 text-sm">Your responses have been recorded and analyzed.</p>
+                    <button onClick={() => window.location.reload()} className="mt-4 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors">
+                      Return to Dashboard
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : isRecording ? (
+              <button onClick={stopRecording} className="w-20 h-20 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-lg hover:shadow-xl transition-all" title="Stop Recording">
+                <MicOff size={40} />
+              </button>
+            ) : (
+              <button disabled={isSpeaking || isLoading} onClick={startRecording} className="w-20 h-20 rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl transition-all" title="Start Recording">
+                {isLoading ? <Loader2 className="animate-spin" size={40} /> : <Mic size={40} />}
+              </button>
+            )}
+
+            {/* Transcript View */}
+            <div className="w-full max-w-xs mt-8">
               <LiveTranscript text={isSpeaking ? lastSarahText : null} />
             </div>
           </div>
+        </div>
 
-          {/* Right panel — code workspace */}
-          {isSplit && (
-            <div
-              className="right-panel"
-              style={{ animation: "fadeInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1)" }}
-            >
-              <div className="workspace-panel">
-                <div
-                  className="workspace-panel-header"
-                  style={{ justifyContent: "space-between", height: "56px" }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <div
-                      style={{
-                        background: "rgba(99, 102, 241, 0.1)",
-                        padding: "0.4rem",
-                        borderRadius: "8px",
-                      }}
-                    >
-                      <Terminal size={18} color="var(--primary)" />
-                    </div>
-                    <span
-                      style={{
-                        fontSize: "0.8rem",
-                        fontWeight: 700,
-                        letterSpacing: "0.05em",
-                        color: "var(--foreground)",
-                      }}
-                    >
-                      TECHNICAL WORKSPACE
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                    {codeSyncState === "syncing" && (
-                      <div
-                        style={{
-                          fontSize: "0.7rem",
-                          color: "var(--foreground-muted)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.4rem",
-                          background: "rgba(255,255,255,0.03)",
-                          padding: "4px 10px",
-                          borderRadius: "6px",
-                        }}
-                      >
-                        <Loader2 size={12} className="animate-spin" />
-                        <span>Syncing…</span>
-                      </div>
-                    )}
-                    {codeSyncState === "synced" && (
-                      <div
-                        style={{
-                          fontSize: "0.7rem",
-                          color: "var(--accent)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.4rem",
-                          background: "rgba(16, 185, 129, 0.05)",
-                          padding: "4px 10px",
-                          borderRadius: "6px",
-                        }}
-                      >
-                        <CheckCircle2 size={12} />
-                        <span>Changes Saved</span>
-                      </div>
-                    )}
-                    <button
-                      onClick={submitCode}
-                      disabled={codeSyncState === "syncing"}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        fontSize: "0.75rem",
-                        padding: "6px 14px",
-                        borderRadius: "var(--radius-sm)",
-                        background: "var(--primary)",
-                        height: "32px",
-                      }}
-                    >
-                      <Send size={12} /> Submit
-                    </button>
-                  </div>
+        {/* Right Panel - Code Editor (50% width when split) */}
+        {isSplit && (
+          <div className="w-1/2 flex flex-col bg-slate-950 overflow-hidden">
+            {/* Code Editor Header */}
+            <div className="flex items-center justify-between h-14 px-6 bg-slate-900/50 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded bg-indigo-600/20 flex items-center justify-center">
+                  <Terminal size={16} className="text-indigo-400" />
                 </div>
-                <div style={{ flex: 1, position: "relative" }}>
-                  <CodeEditor
-                    code={uiConfig?.editorConfig?.codeContent || ""}
-                    language={uiConfig?.editorConfig?.language || "javascript"}
-                    onChange={onCodeChange}
-                  />
-                </div>
+                <span className="text-xs font-bold tracking-wide text-slate-300">TECHNICAL WORKSPACE</span>
+              </div>
+              <div className="flex items-center gap-3">
+                {codeSyncState === "syncing" && (
+                  <div className="flex items-center gap-1 px-3 py-1 rounded bg-slate-800/50 text-xs text-slate-400">
+                    <Loader2 size={12} className="animate-spin" />
+                    <span>Syncing…</span>
+                  </div>
+                )}
+                {codeSyncState === "synced" && (
+                  <div className="flex items-center gap-1 px-3 py-1 rounded bg-emerald-500/10 text-xs text-emerald-400">
+                    <CheckCircle2 size={12} />
+                    <span>Saved</span>
+                  </div>
+                )}
+                <button onClick={submitCode} disabled={codeSyncState === "syncing"} className="flex items-center gap-1 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-600 text-white text-xs font-semibold transition-colors">
+                  <Send size={12} /> Submit
+                </button>
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Code Editor */}
+            <div className="flex-1 overflow-hidden">
+              <CodeEditor
+                code={uiConfig?.editorConfig?.codeContent || ""}
+                language={uiConfig?.editorConfig?.language || "javascript"}
+                onChange={onCodeChange}
+              />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

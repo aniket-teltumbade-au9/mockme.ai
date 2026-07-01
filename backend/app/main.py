@@ -37,6 +37,7 @@ from app.services.voice_service import get_or_refresh_voices
 from app.services.dropbox_service import DropboxService
 
 from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin, tutor, credits, google_auth
+from app.routers.interviews import finalize_interview_task
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
