@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from 'react';
-import { Play, FileText, ChevronRight, Loader2, RotateCcw, TrendingUp } from 'lucide-react';
+import { Play, FileText, ChevronRight, Loader2, RotateCcw, TrendingUp, Target } from 'lucide-react';
 import { RetryModal } from './RetryModal';
+import { ComprehensiveAnalysisModal } from '../Analysis/ComprehensiveAnalysisModal';
 import { InterviewRecord } from '@/types/interview';
 import { IconButton } from '../elements/icon-button';
 import { TextButton } from '../elements/text-button';
@@ -38,6 +39,7 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
   onRetryStarted
 }) => {
   const [showRetryModal, setShowRetryModal] = useState(false);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
 
   const dateObj = new Date(interview.created_at);
   const date = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -151,6 +153,15 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
               Progress
             </TextButton>
  
+            {isFinished && hasGaps && (
+              <TextButton 
+                onClick={() => setShowAnalysisModal(true)}
+              >
+                <Target size={11} className="text-slate-400" />
+                View Plan
+              </TextButton>
+            )}
+ 
             {isFinished ? (
               <button
                 onClick={() => onViewAnalysis(interview)}
@@ -175,6 +186,15 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
           onRetryStarted={(newSessionId, focusGaps) => {
             onRetryStarted?.(newSessionId, focusGaps);
           }}
+        />
+      )}
+ 
+      {showAnalysisModal && isFinished && hasGaps && (
+        <ComprehensiveAnalysisModal
+          sessionId={interview.sessionId}
+          interview={interview}
+          isOpen={showAnalysisModal}
+          onClose={() => setShowAnalysisModal(false)}
         />
       )}
     </>

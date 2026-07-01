@@ -36,7 +36,7 @@ from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_pat
 from app.services.voice_service import get_or_refresh_voices
 from app.services.dropbox_service import DropboxService
 
-from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin, tutor, credits, google_auth
+from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin, tutor, credits, google_auth, analysis
 from app.routers.interviews import finalize_interview_task
 
 @asynccontextmanager
@@ -70,6 +70,7 @@ app.include_router(admin.router)
 app.include_router(tutor.router)
 app.include_router(credits.router)
 app.include_router(google_auth.router)
+app.include_router(analysis.router)
 
 # In-memory session store
 sessions = {}
