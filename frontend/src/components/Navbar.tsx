@@ -26,7 +26,7 @@ export const Navbar: React.FC = () => {
           <CreditStatus />
           <div className="h-6 w-[1px] bg-white/10 mx-2 hidden sm:block" />
           <Link 
-            href="/" 
+            href="/app" 
             className="text-sm font-medium text-foreground-muted hover:text-white transition-colors flex items-center gap-1.5"
           >
             <LayoutDashboard size={16} />

@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Send,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { CodeEditor } from "@/components/CodeEditor";
 import { useInterviewRecorder } from "@/hooks/useInterviewRecorder";
@@ -106,6 +107,7 @@ export default function InterviewPage() {
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [showJDScreen, setShowJDScreen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [creditWarning, setCreditWarning] = useState<string | null>(null);
   const [interviewHistory, setInterviewHistory] = useState<InterviewRecord[]>([]);
   const [selectedInterview, setSelectedInterview] = useState<InterviewRecord | null>(null);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
@@ -175,6 +177,7 @@ export default function InterviewPage() {
     if (!finalJd) return;
     setIsLoading(true);
     setErrorMsg(null);
+    setCreditWarning(null);
     try {
       const formData = new FormData();
       formData.append("jd", finalJd);
@@ -188,7 +191,12 @@ export default function InterviewPage() {
         headers: { ...authHeaders(), "Content-Type": "multipart/form-data" } 
       });
       if (res.data.error) {
-        setErrorMsg(res.data.message);
+        // Check if it's an insufficient credits error
+        if (res.data.message?.includes("credit") || res.data.message?.includes("Credit")) {
+          setCreditWarning(res.data.message);
+        } else {
+          setErrorMsg(res.data.message);
+        }
         setIsLoading(false);
         return;
       }
@@ -683,6 +691,25 @@ export default function InterviewPage() {
             <div className="glass-panel" style={{ maxWidth: "600px", width: "90%" }}>
               <h2 style={{ marginBottom: "1.5rem" }}>Interview Setup</h2>
               
+              {creditWarning && (
+                <div style={{
+                  marginBottom: "1.5rem",
+                  padding: "1rem",
+                  background: "rgba(239, 68, 68, 0.1)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  color: "#fca5a5"
+                }}>
+                  <AlertTriangle size={20} className="flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{creditWarning}</p>
+                  </div>
+                </div>
+              )}
+              
               <JDSelector value={jd} onChange={setJd} />
               
               <div style={{ marginBottom: "1.5rem" }}>
@@ -733,7 +760,15 @@ export default function InterviewPage() {
                 >
                   Back
                 </button>
-                <button onClick={requestStartInterview} disabled={isLoading} style={{ flex: 2 }}>
+                <button 
+                  onClick={requestStartInterview} 
+                  disabled={isLoading || !!creditWarning}
+                  style={{ 
+                    flex: 2,
+                    opacity: creditWarning ? 0.5 : 1,
+                    pointerEvents: creditWarning ? "none" : "auto"
+                  }}
+                >
                   {isLoading ? (
                     <Loader2 className="animate-spin" style={{ margin: "0 auto" }} />
                   ) : (

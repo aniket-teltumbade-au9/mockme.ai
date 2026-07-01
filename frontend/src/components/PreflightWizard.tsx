@@ -211,12 +211,13 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
   }, [steps]);
 
   return (
-    <div className="glass-effect w-full max-w-[500px] mx-auto p-6 max-h-[90vh] overflow-y-auto space-y-8">
-      <div>
-        <h2 className="text-2xl font-black mb-2">Session Setup</h2>
-        <p className="text-foreground-muted text-base">
-          Ensuring everything is ready for your session.
-        </p>
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+      <div className="glass-effect w-full max-w-[500px] p-6 space-y-8 max-h-[90vh] overflow-y-auto rounded-xl">
+        <div>
+          <h2 className="text-2xl font-black mb-2">Session Setup</h2>
+          <p className="text-foreground-muted text-base">
+            Ensuring everything is ready for your session.
+          </p>
         
         <div className="mt-6 space-y-4">
           <div>
@@ -334,6 +335,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
             </>
           )}
         </button>
+      </div>
       </div>
     </div>
   );
