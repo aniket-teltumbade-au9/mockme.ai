@@ -165,16 +165,20 @@ function ActionChecklistSection({
 
           {expandedTimeline === timelineGroup.timeline && (
             <div className="mt-3 space-y-2 pl-2">
-              {timelineGroup.items.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-3 text-sm">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 mt-0.5 rounded border-border bg-white/5 text-primary cursor-pointer"
-                    disabled
-                  />
-                  <span className="text-foreground-muted leading-relaxed">{item}</span>
-                </div>
-              ))}
+              {timelineGroup.items && timelineGroup.items.length > 0 ? (
+                timelineGroup.items.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 mt-0.5 rounded border-border bg-white/5 text-primary cursor-pointer"
+                      disabled
+                    />
+                    <span className="text-foreground-muted leading-relaxed">{item}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-foreground-muted italic">No items available</p>
+              )}
             </div>
           )}
         </div>

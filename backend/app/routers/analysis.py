@@ -121,13 +121,22 @@ async def _generate_improvement_plan(session_id: str) -> ImprovementPlan:
         # Build transformation analysis
         transformations = analysis.get("transformations", [])
         transformation_analysis = None
-        if transformations and len(transformations) > 0:
-            first_transformation = transformations[0]
+        
+        # Handle both list and dict formats for transformations
+        transformations_list = []
+        if isinstance(transformations, dict):
+            # If it's a dict, try to get values or convert to list
+            transformations_list = list(transformations.values()) if transformations else []
+        elif isinstance(transformations, list):
+            transformations_list = transformations
+        
+        if transformations_list and len(transformations_list) > 0:
+            first_transformation = transformations_list[0]
             transformation_analysis = {
-                "critical_moment": first_transformation.get("context", "Interview challenge"),
-                "candidate_original": first_transformation.get("candidate_response", "")[:300],
-                "elite_response": first_transformation.get("elite_response", "")[:500],
-                "why_better": first_transformation.get("analysis", "")
+                "critical_moment": first_transformation.get("context", "Interview challenge") if isinstance(first_transformation, dict) else "Interview challenge",
+                "candidate_original": (first_transformation.get("candidate_response", "") if isinstance(first_transformation, dict) else "")[:300],
+                "elite_response": (first_transformation.get("elite_response", "") if isinstance(first_transformation, dict) else "")[:500],
+                "why_better": first_transformation.get("analysis", "") if isinstance(first_transformation, dict) else ""
             }
         
         # Compile technical analysis
