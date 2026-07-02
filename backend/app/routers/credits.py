@@ -13,6 +13,21 @@ async def claim_daily_visit(current_user: dict = Depends(get_current_user)):
     result = await CreditService.process_daily_visit(user_id)
     return result
 
+@router.post("/auto-claim-daily")
+async def auto_claim_daily(current_user: dict = Depends(get_current_user)):
+    """
+    Auto-claim daily visit on login (non-blocking).
+    This is called automatically when user authenticates.
+    """
+    user_id = current_user["user_id"]
+    try:
+        result = await CreditService.process_daily_visit(user_id)
+        return result
+    except Exception as e:
+        # Silently fail - don't block login if daily credit fails
+        print(f"Auto-claim daily visit failed for user {user_id}: {e}")
+        return {"balance": 0, "streak": 0, "error": "Failed to claim daily credit"}
+
 @router.get("/status")
 async def get_credit_status(current_user: dict = Depends(get_current_user)):
     """Get current balance, streak, and market-readiness status."""

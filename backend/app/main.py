@@ -36,7 +36,7 @@ from app.services.storage import get_storage_dir, get_tts_clip_path, get_mic_pat
 from app.services.voice_service import get_or_refresh_voices
 from app.services.dropbox_service import DropboxService
 
-from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin, tutor, credits, google_auth, analysis
+from app.routers import dropbox_auth, interviews, code_runner, jd_samples, progress, focused_sessions, admin, tutor, credits, google_auth, analysis, festival_bonus
 from app.routers.interviews import finalize_interview_task
 
 @asynccontextmanager
@@ -71,6 +71,7 @@ app.include_router(tutor.router)
 app.include_router(credits.router)
 app.include_router(google_auth.router)
 app.include_router(analysis.router)
+app.include_router(festival_bonus.router)
 
 # In-memory session store
 sessions = {}
@@ -175,8 +176,11 @@ async def start_session(
 ):
     user_id = current_user["user_id"]
     
+    # Generate session_id first so we can use it for credit tracking
+    session_id = str(uuid.uuid4())
+    
     # --- Credit Check & Deduction ---
-    if not await CreditService.handle_interview_start(user_id, str(uuid.uuid4())): # Temporary session_id for ledger
+    if not await CreditService.handle_interview_start(user_id, session_id):
         return {
             "error": "Insufficient Credits",
             "message": "You need at least 2 credits to start an interview. Log in daily or complete quick drills to earn more!"
@@ -187,8 +191,6 @@ async def start_session(
             "error": "Daily limit reached",
             "message": "You have already completed your interview for today. Consistency is key, come back tomorrow!"
         }
-
-    session_id = str(uuid.uuid4())
     # Set JD or Topic as the context
     context = jd if jd else f"Topic-Specific Interview on: {topic}" if topic else "General Software Engineer"
     session = Session(sessionId=session_id, user_id=user_id, created_at=datetime.now(timezone.utc), topic=topic, jd=context, is_rehearsal=is_rehearsal)

@@ -50,6 +50,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserIdState(id);
     setAccessTokenState(token);
     setSessionExpired(false);
+    
+    // Auto-claim daily visit on login (fire-and-forget, non-blocking)
+    axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/credits/auto-claim-daily`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }).catch((err) => {
+      // Silently fail - don't disrupt login flow
+      console.debug("Auto-claim daily visit failed:", err);
+    });
   }, []);
 
   const logout = useCallback(() => {

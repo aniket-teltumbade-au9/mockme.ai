@@ -23,7 +23,7 @@ class CreditService:
         # If credits become > 0, status is no longer 'Suspended'
         update_query = {"$inc": {"credits": amount}}
         
-        # We use a pipeline or check after update to handle status transitions
+        # Use return_document=True with return_new=True to get the UPDATED document
         user = await db.users.find_one_and_update(
             {"user_id": user_id},
             update_query,
@@ -31,8 +31,11 @@ class CreditService:
             upsert=True
         )
         
-        new_balance = user.get("credits", 0)
-        status = user.get("status", "Active")
+        # find_one_and_update returns the document BEFORE the update by default
+        # We need to fetch the updated document or calculate the new balance manually
+        updated_user = await db.users.find_one({"user_id": user_id})
+        new_balance = updated_user.get("credits", 0) if updated_user else 0
+        status = updated_user.get("status", "Active") if updated_user else "Active"
         
         if new_balance > 0 and status == "Suspended":
             await db.users.update_one({"user_id": user_id}, {"$set": {"status": "Active"}})
