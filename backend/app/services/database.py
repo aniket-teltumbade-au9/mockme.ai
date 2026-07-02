@@ -43,8 +43,30 @@ async def test_db_connection():
 async def get_user(user_id: str):
     user = await db.users.find_one({"user_id": user_id})
     if not user:
-        new_user: dict = {"user_id": user_id, "dropbox_refresh_token": None}
+        # Import here to avoid circular dependency
+        from app.services.credit_service import CreditService
+        
+        # Create new user with welcome bonus
+        new_user: dict = {
+            "user_id": user_id, 
+            "dropbox_refresh_token": None,
+            "credits": CreditService.WELCOME_BONUS,
+            "status": "Active",
+            "visit_streak": 0,
+            "last_visit_date": None,
+            "last_interview_date": None
+        }
         await db.users.insert_one(new_user)
+        
+        # Record the welcome bonus in the ledger
+        await db.credit_ledger.insert_one({
+            "user_id": user_id,
+            "amount": CreditService.WELCOME_BONUS,
+            "type": "WELCOME_BONUS",
+            "timestamp": datetime.now(timezone.utc),
+            "reference_id": None
+        })
+        
         new_user["_id"] = str(new_user["_id"])
         return new_user
     user["_id"] = str(user["_id"])

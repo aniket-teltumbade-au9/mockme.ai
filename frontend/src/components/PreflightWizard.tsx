@@ -122,38 +122,73 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
         return;
       }
 
-      patchStep("dropbox", { status: "loading", detail: "Checking Dropbox…" });
+      patchStep("dropbox", { status: "loading", detail: "Checking cloud storage…" });
       try {
-        const res = await axios.get(`${API_BASE}/dropbox/status`, { headers: authHeaders() });
-        if (res.data.connected) {
+        // Check Dropbox first
+        const dropboxRes = await axios.get(`${API_BASE}/dropbox/status`, { headers: authHeaders() });
+        if (dropboxRes.data.connected) {
           patchStep("dropbox", {
             status: "ok",
-            detail: `Connected as ${res.data.email || "linked account"}. Recordings will be saved to Dropbox.`,
+            detail: `Connected as ${dropboxRes.data.email || "linked account"}. Recordings will be saved to Dropbox.`,
+            label: "Cloud Storage (Dropbox)",
           });
         } else {
-          patchStep("dropbox", {
-            status: "warn",
-            detail:
-              "Dropbox not connected. Recordings won't be saved to cloud storage.",
-            actionLabel: "Connect Dropbox",
-            onAction: async () => {
-              try {
-                const r = await axios.get(`${API_BASE}/dropbox/auth-url`);
-                localStorage.setItem(
-                  "dropbox_code_verifier",
-                  r.data.code_verifier,
-                );
-                window.location.href = r.data.auth_url;
-              } catch {
-                alert("Failed to initiate Dropbox connection.");
-              }
-            },
-          });
+          // Check Google Drive as fallback
+          try {
+            const googleRes = await axios.get(`${API_BASE}/google/status`, { headers: authHeaders() });
+            if (googleRes.data.connected) {
+              patchStep("dropbox", {
+                id: "google",
+                status: "ok",
+                detail: `Connected to Google Drive as ${googleRes.data.email || "linked account"}. Recordings will be saved to Google Drive.`,
+                label: "Cloud Storage (Google Drive)",
+              });
+            } else {
+              patchStep("dropbox", {
+                status: "warn",
+                detail:
+                  "No cloud storage connected. Recordings won't be saved to cloud.",
+                actionLabel: "Connect Cloud Storage",
+                onAction: async () => {
+                  try {
+                    // Try Dropbox first
+                    const r = await axios.get(`${API_BASE}/dropbox/auth-url`);
+                    localStorage.setItem(
+                      "dropbox_code_verifier",
+                      r.data.code_verifier,
+                    );
+                    window.location.href = r.data.auth_url;
+                  } catch {
+                    alert("Failed to initiate cloud storage connection.");
+                  }
+                },
+              });
+            }
+          } catch {
+            patchStep("dropbox", {
+              status: "warn",
+              detail:
+                "Dropbox not connected. Recordings won't be saved to cloud storage.",
+              actionLabel: "Connect Dropbox",
+              onAction: async () => {
+                try {
+                  const r = await axios.get(`${API_BASE}/dropbox/auth-url`);
+                  localStorage.setItem(
+                    "dropbox_code_verifier",
+                    r.data.code_verifier,
+                  );
+                  window.location.href = r.data.auth_url;
+                } catch {
+                  alert("Failed to initiate Dropbox connection.");
+                }
+              },
+            });
+          }
         }
       } catch {
         patchStep("dropbox", {
           status: "warn",
-          detail: "Could not verify Dropbox status.",
+          detail: "Could not verify cloud storage status.",
         });
       }
     };
@@ -176,12 +211,13 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
   }, [steps]);
 
   return (
-    <div className="glass-effect w-full max-w-[500px] mx-auto p-6 max-h-[90vh] overflow-y-auto space-y-8">
-      <div>
-        <h2 className="text-2xl font-black mb-2">Session Setup</h2>
-        <p className="text-foreground-muted text-base">
-          Ensuring everything is ready for your session.
-        </p>
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+      <div className="glass-effect w-full max-w-[500px] p-6 space-y-8 max-h-[90vh] overflow-y-auto rounded-xl">
+        <div>
+          <h2 className="text-2xl font-black mb-2">Session Setup</h2>
+          <p className="text-foreground-muted text-base">
+            Ensuring everything is ready for your session.
+          </p>
         
         <div className="mt-6 space-y-4">
           <div>
@@ -299,6 +335,7 @@ export const PreflightWizard: React.FC<PreflightWizardProps> = ({
             </>
           )}
         </button>
+      </div>
       </div>
     </div>
   );
