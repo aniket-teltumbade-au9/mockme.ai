@@ -55,7 +55,6 @@ const PERSONAS = [
 ];
 
 export default function InterviewPage() {
-  // FIX 1: destructure sessionExpired and logout from useAuth
   const { userId, accessToken, isInitialized, sessionExpired, logout } = useAuth();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -77,23 +76,18 @@ export default function InterviewPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
 
-  // Pre-flight wizard
   const [showPreflight, setShowPreflight] = useState(false);
   const [pendingJd, setPendingJd] = useState<string | null>(null);
   const [pendingResume, setPendingResume] = useState<File | null>(null);
 
-  // Live transcript (last thing Sarah said)
   const [lastSarahText, setLastSarahText] = useState<string | null>(null);
 
-  // Voice selection — controls backend TTS accent
   const [voiceList, setVoiceList] = useState<TTSVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<TTSVoice>({ name: "English (US)", lang_code: "en", flag: "\u{1f1fa}\u{1f1f8}" });
 
-  // Code submission state
   const [codeSyncState, setCodeSyncState] = useState<"idle" | "syncing" | "synced">("idle");
   const latestCodeRef = useRef<string>("");
 
-  // FIX 4: Separate per-turn MediaRecorder refs (do NOT reuse the full session recorder)
   const turnRecorderRef = useRef<MediaRecorder | null>(null);
   const turnChunksRef = useRef<Blob[]>([]);
 
@@ -160,7 +154,6 @@ export default function InterviewPage() {
     }
   };
 
-  // Called when user clicks "Begin Interview" — show preflight wizard
   const requestStartInterview = () => {
     if (!jd.trim()) {
       alert("Please provide a Job Description to begin.");
@@ -170,7 +163,6 @@ export default function InterviewPage() {
     setShowPreflight(true);
   };
 
-  // Called when preflight wizard gives the all-clear
   const handlePreflightComplete = async (topic: string, isRehearsal: boolean, jd?: string) => {
     setShowPreflight(false);
     const finalJd = jd || pendingJd;
@@ -187,11 +179,10 @@ export default function InterviewPage() {
       formData.append("voice_lang", selectedVoice.lang_code);
       if (pendingResume) formData.append("resume", pendingResume);
 
-      const res = await axios.post(`${API_BASE}/session/start`, formData, { 
-        headers: { ...authHeaders(), "Content-Type": "multipart/form-data" } 
+      const res = await axios.post(`${API_BASE}/session/start`, formData, {
+        headers: { ...authHeaders(), "Content-Type": "multipart/form-data" }
       });
       if (res.data.error) {
-        // Check if it's an insufficient credits error
         if (res.data.message?.includes("credit") || res.data.message?.includes("Credit")) {
           setCreditWarning(res.data.message);
         } else {
@@ -203,7 +194,6 @@ export default function InterviewPage() {
       setSessionIdSynced(res.data.sessionId);
       setUiConfigSynced(res.data.uiConfig);
 
-      // Start the long-running full-session recorder (runs for the entire interview)
       try {
         await startFullSessionRecording();
       } catch (err) {
@@ -251,8 +241,6 @@ export default function InterviewPage() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // FIX 4: startRecording uses a dedicated per-turn MediaRecorder,
-  // completely separate from the full-session recorder.
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -269,14 +257,11 @@ export default function InterviewPage() {
     }
   };
 
-  // FIX 4: stopRecording stops only the per-turn recorder and sends the blob.
-  // The full-session recorder keeps running untouched until handleFinalization.
   const stopRecording = () => {
     const mr = turnRecorderRef.current;
     if (!mr) return;
     mr.onstop = () => {
       const blob = new Blob(turnChunksRef.current, { type: "audio/webm" });
-      // Release the mic track so the browser stops showing the recording indicator
       mr.stream.getTracks().forEach((t) => t.stop());
       turnRecorderRef.current = null;
       sendAudioResponse(blob);
@@ -324,7 +309,6 @@ export default function InterviewPage() {
     if (!value) return;
     latestCodeRef.current = value;
     setCodeSyncState("idle");
-    // Removed automatic sync timer
   };
 
   const syncCode = async (code: string) => {
@@ -367,16 +351,7 @@ export default function InterviewPage() {
 
   if (!isInitialized) {
     return (
-      <div
-        style={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#0f172a",
-          color: "white",
-        }}
-      >
+      <div className="h-screen flex items-center justify-center bg-slate-950 text-white">
         Loading...
       </div>
     );
@@ -389,163 +364,75 @@ export default function InterviewPage() {
   // ─── Dashboard (no active session) ───────────────────────────────────────────
   if (!sessionId) {
     return (
-      // FIX 2: single outer container — no double-nested "container" divs
-      <div className="container">
+      <div className="w-full min-h-screen">
 
-        {/* FIX 1: sessionExpired and logout now correctly sourced from useAuth */}
         {sessionExpired && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "rgba(2, 6, 23, 0.9)",
-              backdropFilter: "blur(12px)",
-              zIndex: 10000,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <div className="glass-panel" style={{ maxWidth: "400px", textAlign: "center" }}>
-              <h2 style={{ marginBottom: "1rem" }}>Session Expired</h2>
-              <p style={{ color: "var(--foreground-muted)", marginBottom: "2rem" }}>
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md">
+            <div className="glass-panel max-w-[400px] text-center">
+              <h2 className="mb-4 text-xl font-bold">Session Expired</h2>
+              <p className="text-[var(--foreground-muted)] mb-8">
                 Your authentication token has expired. Please re-authenticate to continue.
               </p>
-              <div style={{ display: "flex", gap: "1rem" }}>
-                <button className="secondary" style={{ flex: 1 }} onClick={logout}>
+              <div className="flex gap-4">
+                <button className="secondary flex-1" onClick={logout}>
                   Logout
                 </button>
-                {/* <button
-                  style={{ flex: 1 }}
-                  onClick={() => {
-                    window.location.href = "/";
-                  }}
-                >
-                  Resume
-                </button> */}
               </div>
             </div>
           </div>
         )}
 
-        {/* FIX 2: layout-conversational is NOT a second "container" */}
-        <div className="layout-conversational" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div className="layout-conversational w-full min-h-screen flex items-center justify-center px-4">
           {!showJDScreen ? (
-            <div
-              className="glass-panel text-center"
-              style={{ maxWidth: "900px", width: "95%", maxHeight: "90vh", overflowY: "auto" }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  marginBottom: "2rem",
-                }}
-              >
-                <h1
-                  style={{
-                    fontSize: "2rem",
-                    background: "linear-gradient(to right, #818cf8, #c084fc)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    fontWeight: 800,
-                  }}
-                >
+            <div className="glass-panel text-center max-w-[900px] w-full mx-auto max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-center items-center mb-8">
+                <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-400 to-fuchsia-400 bg-clip-text text-transparent">
                   MockMe.AI
                 </h1>
               </div>
 
               {errorMsg && (
-                <div style={{ color: "var(--danger)", marginBottom: "1rem" }}>{errorMsg}</div>
+                <div className="text-[var(--danger)] mb-4">{errorMsg}</div>
               )}
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "1.5rem",
-                  textAlign: "left",
-                  marginBottom: "3rem",
-                }}
-              >
-                <div
-                  className="glass-panel"
-                  style={{ padding: "2rem", background: "rgba(255,255,255,0.02)" }}
-                >
-                  <h2
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.6rem",
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
-                      marginBottom: "1.25rem",
-                      color: "var(--foreground-muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    <BarChart3 size={18} color="var(--primary)" /> Performance
+              <div className="grid grid-cols-2 gap-6 text-left mb-12">
+                <div className="glass-panel p-8 bg-white/[0.02]">
+                  <h2 className="flex items-center gap-2.5 text-sm font-bold mb-5 text-[var(--foreground-muted)] uppercase tracking-wide">
+                    <BarChart3 size={18} className="text-[var(--primary)]" /> Performance
                   </h2>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem" }}>
-                    <span style={{ fontSize: "3rem", fontWeight: 800, color: "var(--foreground)" }}>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-extrabold text-[var(--foreground)]">
                       {userProgress?.total_interviews || 0}
                     </span>
-                    <span style={{ color: "var(--foreground-muted)", fontWeight: 500 }}>
+                    <span className="text-[var(--foreground-muted)] font-medium">
                       Sessions
                     </span>
                   </div>
                 </div>
 
-                <div
-                  className="glass-panel"
-                  style={{ padding: "2rem", background: "rgba(255,255,255,0.02)" }}
-                >
-                  <h2
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.6rem",
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
-                      marginBottom: "1.25rem",
-                      color: "var(--foreground-muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    <History size={18} color="var(--accent)" /> Recent Gaps
+                <div className="glass-panel p-8 bg-white/[0.02]">
+                  <h2 className="flex items-center gap-2.5 text-sm font-bold mb-5 text-[var(--foreground-muted)] uppercase tracking-wide">
+                    <History size={18} className="text-[var(--accent)]" /> Recent Gaps
                   </h2>
-                  <div style={{ fontSize: "0.85rem", color: "var(--foreground-muted)" }}>
+                  <div className="text-sm text-[var(--foreground-muted)]">
                     {(userProgress?.skill_gaps?.length ?? 0) > 0 ? (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                      <div className="flex flex-wrap gap-2">
                         {userProgress!.skill_gaps.slice(0, 3).map((g, i) => (
                           <span
                             key={i}
-                            style={{
-                              background: "rgba(239,68,68,0.08)",
-                              color: "#fca5a5",
-                              padding: "4px 10px",
-                              borderRadius: "8px",
-                              border: "1px solid rgba(239,68,68,0.1)",
-                              fontWeight: 500,
-                            }}
+                            className="bg-red-500/[0.08] text-red-300 px-2.5 py-1 rounded-lg border border-red-500/10 font-medium"
                           >
                             {g}
                           </span>
                         ))}
                         {userProgress!.skill_gaps.length > 3 && (
-                          <span style={{ padding: "4px 10px", color: "var(--foreground-muted)" }}>
+                          <span className="px-2.5 py-1 text-[var(--foreground-muted)]">
                             +{userProgress!.skill_gaps.length - 3} more
                           </span>
                         )}
                       </div>
                     ) : (
-                      <p style={{ fontStyle: "italic", opacity: 0.7 }}>
+                      <p className="italic opacity-70">
                         No gaps detected yet. Start an interview!
                       </p>
                     )}
@@ -553,47 +440,27 @@ export default function InterviewPage() {
                 </div>
               </div>
 
-              <div style={{ textAlign: "left", marginBottom: "3rem" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: "1.5rem",
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                >
-                  <h3 style={{ fontSize: "1.25rem", fontWeight: 800 }}>Performance & History</h3>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div className="text-left mb-12">
+                <div className="flex items-center justify-between mb-6 border-b border-[var(--border)]">
+                  <h3 className="text-xl font-extrabold">Performance & History</h3>
+                  <div className="flex gap-2">
                     <button
                       onClick={() => setDashboardTab("history")}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        background: dashboardTab === "history" ? "rgba(129, 140, 248, 0.2)" : "transparent",
-                        border: dashboardTab === "history" ? "1px solid #818cf8" : "1px solid transparent",
-                        borderRadius: "8px",
-                        color: dashboardTab === "history" ? "#818cf8" : "var(--foreground-muted)",
-                        cursor: "pointer",
-                        fontSize: "0.9rem",
-                        fontWeight: dashboardTab === "history" ? 600 : 400,
-                        transition: "all 0.2s",
-                      }}
+                      className={`px-4 py-2 rounded-lg text-sm transition-all border ${
+                        dashboardTab === "history"
+                          ? "bg-indigo-400/20 border-indigo-400 text-indigo-400 font-semibold"
+                          : "bg-transparent border-transparent text-[var(--foreground-muted)] font-normal"
+                      }`}
                     >
                       History
                     </button>
                     <button
                       onClick={() => setDashboardTab("progress")}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        background: dashboardTab === "progress" ? "rgba(129, 140, 248, 0.2)" : "transparent",
-                        border: dashboardTab === "progress" ? "1px solid #818cf8" : "1px solid transparent",
-                        borderRadius: "8px",
-                        color: dashboardTab === "progress" ? "#818cf8" : "var(--foreground-muted)",
-                        cursor: "pointer",
-                        fontSize: "0.9rem",
-                        fontWeight: dashboardTab === "progress" ? 600 : 400,
-                        transition: "all 0.2s",
-                      }}
+                      className={`px-4 py-2 rounded-lg text-sm transition-all border ${
+                        dashboardTab === "progress"
+                          ? "bg-indigo-400/20 border-indigo-400 text-indigo-400 font-semibold"
+                          : "bg-transparent border-transparent text-[var(--foreground-muted)] font-normal"
+                      }`}
                     >
                       Progress & Analytics
                     </button>
@@ -602,26 +469,10 @@ export default function InterviewPage() {
 
                 {dashboardTab === "history" ? (
                   <div>
-                    <div
-                      style={{
-                        fontSize: "0.8rem",
-                        color: "var(--foreground-muted)",
-                        fontWeight: 500,
-                        marginBottom: "1rem",
-                      }}
-                    >
+                    <div className="text-xs text-[var(--foreground-muted)] font-medium mb-4">
                       {interviewHistory.length} Recorded Sessions
                     </div>
-                    <div
-                      style={{
-                        maxHeight: "400px",
-                        overflowY: "auto",
-                        paddingRight: "0.75rem",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "0.5rem",
-                      }}
-                    >
+                    <div className="max-h-[400px] overflow-y-auto pr-3 flex flex-col gap-2">
                       {interviewHistory.length > 0 ? (
                         interviewHistory.map((inv) => (
                           <InterviewHistoryCard
@@ -641,7 +492,6 @@ export default function InterviewPage() {
                             }}
                             onRetryFinalize={handleRetryAftersave}
                             onRetryStarted={(_newSessionId) => {
-                              // Switch to focused interview and fetch history
                               setSessionIdSynced(_newSessionId);
                               setShowJDScreen(false);
                               fetchHistory();
@@ -649,17 +499,7 @@ export default function InterviewPage() {
                           />
                         ))
                       ) : (
-                        <div
-                          style={{
-                            textAlign: "center",
-                            padding: "3rem",
-                            background: "rgba(255,255,255,0.02)",
-                            borderRadius: "var(--radius-lg)",
-                            border: "1px dashed var(--border)",
-                            color: "var(--foreground-muted)",
-                            fontStyle: "italic",
-                          }}
-                        >
+                        <div className="text-center p-12 bg-white/[0.02] rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] text-[var(--foreground-muted)] italic">
                           No previous sessions found.
                         </div>
                       )}
@@ -672,105 +512,64 @@ export default function InterviewPage() {
 
               <button
                 onClick={() => setShowJDScreen(true)}
-                className="mic-btn"
-                style={{
-                  margin: "0 auto",
-                  width: "280px",
-                  borderRadius: "var(--radius-lg)",
-                  height: "64px",
-                  fontSize: "1rem",
-                  fontWeight: 700,
-                  letterSpacing: "0.02em",
-                  boxShadow: "0 20px 40px -10px var(--primary-glow)",
-                }}
+                className="mic-btn mx-auto w-[280px] h-16 rounded-[var(--radius-lg)] text-base font-bold tracking-wide shadow-[0_20px_40px_-10px_var(--primary-glow)]"
               >
                 Start Daily Practice
               </button>
             </div>
           ) : (
-            <div className="glass-panel" style={{ maxWidth: "600px", width: "90%" }}>
-              <h2 style={{ marginBottom: "1.5rem" }}>Interview Setup</h2>
-              
+            <div className="glass-panel max-w-[600px] w-[90%]">
+              <h2 className="mb-6 text-xl font-bold">Interview Setup</h2>
+
               {creditWarning && (
-                <div style={{
-                  marginBottom: "1.5rem",
-                  padding: "1rem",
-                  background: "rgba(239, 68, 68, 0.1)",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.75rem",
-                  color: "#fca5a5"
-                }}>
+                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-3 text-red-300">
                   <AlertTriangle size={20} className="flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">{creditWarning}</p>
                   </div>
                 </div>
               )}
-              
+
               <JDSelector value={jd} onChange={setJd} />
-              
-              <div style={{ marginBottom: "1.5rem" }}>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>
+
+              <div className="mb-6">
+                <label className="block text-sm font-semibold mb-2 text-[var(--foreground-muted)]">
                   Resume (PDF/Docx)
                 </label>
                 <input
                   type="file"
                   onChange={(e) => setPendingResume(e.target.files?.[0] || null)}
-                  style={{
-                    width: "100%",
-                    background: "var(--secondary)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "12px",
-                    padding: "0.75rem 1rem",
-                    color: "white",
-                    fontSize: "0.9rem",
-                  }}
+                  className="w-full bg-[var(--secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-white text-sm"
                 />
               </div>
-              <div style={{ marginBottom: "1.5rem" }}>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--foreground-muted)" }}>
+              <div className="mb-6">
+                <label className="block text-sm font-semibold mb-2 text-[var(--foreground-muted)]">
                   Interview Persona
                 </label>
                 <select
                   value={selectedPersona.id}
                   onChange={(e) => setSelectedPersona(PERSONAS.find(p => p.id === e.target.value) || PERSONAS[0])}
-                  style={{
-                    width: "100%",
-                    background: "var(--secondary)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "12px",
-                    padding: "0.75rem 1rem",
-                    color: "white",
-                    fontSize: "0.9rem",
-                  }}
+                  className="w-full bg-[var(--secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-white text-sm"
                 >
                   {PERSONAS.map((p) => (
                     <option key={p.id} value={p.id}>{p.label}</option>
                   ))}
                 </select>
               </div>
-              <div style={{ display: "flex", gap: "1rem" }}>
+              <div className="flex gap-4">
                 <button
                   onClick={() => setShowJDScreen(false)}
-                  className="secondary"
-                  style={{ flex: 1 }}
+                  className="secondary flex-1"
                 >
                   Back
                 </button>
-                <button 
-                  onClick={requestStartInterview} 
+                <button
+                  onClick={requestStartInterview}
                   disabled={isLoading || !!creditWarning}
-                  style={{ 
-                    flex: 2,
-                    opacity: creditWarning ? 0.5 : 1,
-                    pointerEvents: creditWarning ? "none" : "auto"
-                  }}
+                  className={`flex-[2] ${creditWarning ? "opacity-50 pointer-events-none" : "opacity-100 pointer-events-auto"}`}
                 >
                   {isLoading ? (
-                    <Loader2 className="animate-spin" style={{ margin: "0 auto" }} />
+                    <Loader2 className="animate-spin mx-auto" />
                   ) : (
                     "Begin Interview"
                   )}
@@ -780,7 +579,6 @@ export default function InterviewPage() {
           )}
         </div>{/* end layout-conversational */}
 
-        {/* FIX 3: Modals are outside the layout div, still inside the outer container */}
         {showPreflight && userId && (
           <PreflightWizard
             userId={userId}
@@ -805,13 +603,13 @@ export default function InterviewPage() {
             onClose={() => setShowAnalysis(false)}
           />
         )}
-        
+
         {showTranscript && selectedInterview && (
           <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-sm">
             <div className="h-full w-full max-w-[640px] bg-zinc-900 border-l border-zinc-800 p-8 overflow-y-auto shadow-2xl animate-slide-in-right">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-zinc-100">Transcript</h2>
-                <button 
+                <button
                   onClick={() => setShowTranscript(false)}
                   className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-zinc-100"
                 >
@@ -832,7 +630,7 @@ export default function InterviewPage() {
           </div>
         )}
 
-      </div> // end outer container
+      </div>
     );
   }
 
@@ -864,7 +662,7 @@ export default function InterviewPage() {
           </div>
           <div className="flex items-center gap-3">
             <VoiceSelector voices={voiceList} selectedVoice={selectedVoice} onSelect={setSelectedVoice} />
-            <div className="state-badge" style={{ background: "var(--secondary)", padding: "4px 12px", borderRadius: "12px", fontSize: "0.7rem" }}>
+            <div className="bg-[var(--secondary)] px-3 py-1 rounded-xl text-xs">
               {uiConfig?.currentState}
             </div>
           </div>

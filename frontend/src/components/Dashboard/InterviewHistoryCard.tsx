@@ -61,35 +61,103 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
   return (
     <>
       {/* Card Wrapper with enhanced polish & shadow lift on hover */}
-      <div className="flex rounded-xl border border-white/[0.06] overflow-hidden mb-3 hover:border-white/[0.15] hover:shadow-lg hover:shadow-black/20 transition-all duration-200 bg-gradient-to-r from-neutral-900/90 to-neutral-900/50 backdrop-blur-md group">
+      <div className="flex flex-col rounded-xl border border-white/[0.06] overflow-hidden mb-3 hover:border-white/[0.15] hover:shadow-lg hover:shadow-black/20 transition-all duration-200 bg-gradient-to-r from-neutral-900/90 to-neutral-900/50 backdrop-blur-md group">
  
         {/* Verdict visual indicator bar */}
-        <div className={`w-[4px] shrink-0 self-stretch ${s.bar} opacity-80 group-hover:opacity-100 transition-opacity`} />
+        <div className={`w-full h-[3px] ${s.bar} opacity-80 group-hover:opacity-100 transition-opacity`} />
  
         {/* Main Content Body */}
-        <div className="flex items-center gap-6 flex-1 px-5 py-4 min-w-0">
+        <div className="flex flex-col gap-3 px-5 py-4">
  
-          {/* Refined Date & Time Layout */}
-          <div className="shrink-0 w-28 flex flex-col gap-0.5">
-            <p className="text-xs font-bold text-slate-200 tracking-wide uppercase">{date}</p>
-            <p className="text-[11px] text-slate-400/80 font-medium tracking-normal">{time}</p>
+          {/* Top Row: Date, Verdict, and Action Buttons */}
+          <div className="flex items-center gap-4 justify-between">
+ 
+            {/* Date & Time Layout */}
+            <div className="shrink-0 w-28 flex flex-col gap-0.5">
+              <p className="text-xs font-bold text-slate-200 tracking-wide uppercase">{date}</p>
+              <p className="text-[11px] text-slate-400/80 font-medium tracking-normal">{time}</p>
+            </div>
+ 
+            {/* Verdict Badge */}
+            <div className={`
+              shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full border
+              text-[10px] font-extrabold uppercase tracking-widest
+              ${s.pillBg} ${s.pillBorder} ${s.pillText} backdrop-blur-sm
+            `}>
+              {isPending
+                ? <Loader2 size={10} className="animate-spin" />
+                : <span className={`w-1.5 h-1.5 rounded-full ${s.dot} shadow-sm animate-pulse`} />
+              }
+              {verdict}
+            </div>
+ 
+            {/* Action Row — Structured Clean Interactive Controls */}
+            <div className="shrink-0 flex items-center gap-2 ml-auto">
+              {interview.dropbox_audio_url && isFinished && (
+                <IconButton 
+                  onClick={() => onPlayAudio(interview)} 
+                  title="Play recording"
+                >
+                  <Play size={13} fill="currentColor" />
+                </IconButton>
+              )}
+ 
+              {isFinished && (
+                <IconButton 
+                  onClick={() => onViewTranscript(interview)} 
+                  title="View transcript"
+                >
+                  <FileText size={13} />
+                </IconButton>
+              )}
+ 
+              {hasGaps && isFinished && (
+                <TextButton 
+                  onClick={() => setShowRetryModal(true)}
+                >
+                  <RotateCcw size={11} className="text-slate-400" />
+                  Retry
+                </TextButton>
+              )}
+ 
+              {!interview.dropbox_audio_url && onRetryFinalize && (
+                <TextButton 
+                  onClick={() => onRetryFinalize(interview)}
+                >
+                  Retry upload
+                </TextButton>
+              )}
+ 
+              <TextButton 
+                onClick={() => console.log('progress')}
+              >
+                <TrendingUp size={11} className="text-slate-400" />
+                Progress
+              </TextButton>
+ 
+              {isFinished && hasGaps && (
+                <TextButton 
+                  onClick={() => setShowAnalysisModal(true)}
+                >
+                  <Target size={11} className="text-slate-400" />
+                  View Plan
+                </TextButton>
+              )}
+ 
+              {isFinished ? (
+                <button
+                  onClick={() => onViewAnalysis(interview)}
+                  className="flex items-center gap-1 px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-bold tracking-wide transition-all shadow-md shadow-primary/10 active:scale-[0.98]"
+                >
+                  Analysis
+                  <ChevronRight size={13} className="ml-0.5 opacity-90" />
+                </button>
+              ) : null}
+            </div>
           </div>
- 
-          {/* Verdict Badge with a cleaner pill profile */}
-          <div className={`
-            shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full border
-            text-[10px] font-extrabold uppercase tracking-widest
-            ${s.pillBg} ${s.pillBorder} ${s.pillText} backdrop-blur-sm
-          `}>
-            {isPending
-              ? <Loader2 size={10} className="animate-spin" />
-              : <span className={`w-1.5 h-1.5 rounded-full ${s.dot} shadow-sm animate-pulse`} />
-            }
-            {verdict}
-          </div>
- 
-          {/* Skill Gaps or Status Micro-Copy */}
-          <div className="flex items-center gap-1.5 flex-1 flex-wrap min-w-0 px-2">
+
+          {/* Bottom Row: Skill Gaps or Status Messages */}
+          <div className="flex flex-wrap items-center gap-2">
             {isFinished && hasGaps && detectedGaps.map((gap) => (
               <span
                 key={gap}
@@ -106,73 +174,6 @@ export const InterviewHistoryCard: React.FC<InterviewHistoryCardProps> = ({
             )}
             {isFinished && !hasGaps && (
               <span className="text-[11px] text-slate-500 italic font-medium">No performance gaps detected</span>
-            )}
-          </div>
- 
-          {/* Action Row — Structured Clean Interactive Controls */}
-          <div className="shrink-0 flex items-center gap-2">
-            {interview.dropbox_audio_url && isFinished && (
-              <IconButton 
-                onClick={() => onPlayAudio(interview)} 
-                title="Play recording"
-              >
-                <Play size={13} fill="currentColor" />
-              </IconButton>
-            )}
- 
-            {isFinished && (
-              <IconButton 
-                onClick={() => onViewTranscript(interview)} 
-                title="View transcript"
-              >
-                <FileText size={13} />
-              </IconButton>
-            )}
- 
-            {hasGaps && isFinished && (
-              <TextButton 
-                onClick={() => setShowRetryModal(true)}
-              >
-                <RotateCcw size={11} className="text-slate-400" />
-                Retry
-              </TextButton>
-            )}
- 
-            {!interview.dropbox_audio_url && onRetryFinalize && (
-              <TextButton 
-                onClick={() => onRetryFinalize(interview)}
-              >
-                Retry upload
-              </TextButton>
-            )}
- 
-            <TextButton 
-              onClick={() => console.log('progress')}
-            >
-              <TrendingUp size={11} className="text-slate-400" />
-              Progress
-            </TextButton>
- 
-            {isFinished && hasGaps && (
-              <TextButton 
-                onClick={() => setShowAnalysisModal(true)}
-              >
-                <Target size={11} className="text-slate-400" />
-                View Plan
-              </TextButton>
-            )}
- 
-            {isFinished ? (
-              <button
-                onClick={() => onViewAnalysis(interview)}
-                className="flex items-center gap-1 px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-bold tracking-wide transition-all shadow-md shadow-primary/10 active:scale-[0.98]"
-              >
-                Analysis
-                <ChevronRight size={13} className="ml-0.5 opacity-90" />
-              </button>
-            ) : (
-              /* Balanced spacer layout rule integrity */
-              <div className="w-[86px]" />
             )}
           </div>
         </div>
